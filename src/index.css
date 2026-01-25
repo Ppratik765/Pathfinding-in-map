@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-color: #f8fafc;
+}
+
+.dark {
+  --bg-color: #0f172a;
+}
+
+body {
+  background-color: var(--bg-color);
+  overflow-x: hidden;
+  transition: background-color 0.3s ease;
+}
+
+/* --- NODE STYLES --- */
+.node-visited {
+  @apply bg-blue-500 animate-pop border-blue-600;
+}
+
+.node-path {
+  @apply bg-yellow-400 animate-path border-yellow-500 shadow-[0_0_10px_rgba(251,191,36,0.8)];
+}
+
+.node-wall {
+  @apply bg-gray-800 border-gray-900 dark:bg-white dark:border-white;
+}
+
+.node-start {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff' stroke='%23000000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21h6v-6H9v6zm3-19L2 12h3v9h5v-6h4v6h5v-9h3L12 2z'/%3E%3C/svg%3E");
+  background-size: 70%;
+  background-repeat: no-repeat;
+  background-position: center;
+  @apply bg-green-500 border-green-600 shadow-lg;
+}
+
+.node-end {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+  background-size: 70%;
+  background-repeat: no-repeat;
+  background-position: center;
+  @apply bg-red-500 border-red-600 shadow-lg;
+}
