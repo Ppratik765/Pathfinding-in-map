@@ -39,7 +39,7 @@ The application focuses on performance and clarity, featuring a comparison mode 
 
 ### Supported Algorithms
 1.  **Dijkstra's Algorithm:** The father of pathfinding. Guarantees the shortest path.
-2.  **A* Search (A-Star):** Uses heuristics (physical distance) to optimise the search direction. accurate and fast.
+2.  **A * Search (A-Star):** Uses heuristics (physical distance) to optimise the search direction. accurate and fast.
 3.  **Breadth-First Search (BFS):** Explores equally in all directions. Unweighted (ignores traffic/distance costs).
 4.  **Depth-First Search (DFS):** Explores as far as possible along each branch before backtracking. Not guaranteed to find the shortest path.
 5.  **Greedy Best-First Search:** Prioritises paths that appear to be closer to the goal. Very fast but not always optimal.
@@ -68,8 +68,8 @@ You will also need a free API Key from MapTiler.
 
 1.  **Clone the Repository**
     ```bash
-    git clone [https://github.com/yourusername/geoviz.git](https://github.com/yourusername/geoviz.git)
-    cd geoviz
+    git clone https://github.com/Ppratik765/Pathfinding-in-map.git
+    cd Pathfinding-in-map
     ```
 
 2.  **Install Dependencies**
