@@ -182,7 +182,7 @@ function App() {
                             {index === 0 && (
                                 <button onClick={() => setShowPerimeter(!showPerimeter)} className="flex items-center gap-1 px-1.5 bg-gray-200 dark:bg-gray-800 rounded hover:bg-blue-100 text-gray-700 dark:text-gray-300 transition-colors h-6" title="Toggle Loaded Area">
                                     <CheckSquare size={12} className={showPerimeter ? "text-blue-500" : "opacity-40"} />
-                                    <span className="text-[9px] font-bold uppercase tracking-tight">Area</span>
+                                    <span className="opacity-50 text-[9px] font-bold uppercase tracking-tight">Show loaded area</span>
                                 </button>
                             )}
 
@@ -195,7 +195,7 @@ function App() {
 
                             {/* MINI DROPDOWN */}
                             <div className="bg-white dark:bg-gray-800 px-2 rounded border border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-1.5 h-6">
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Algo {index+1}</span>
+                                <span className="opacity-50 text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Algo {index+1}</span>
                                 <select value={algo} onChange={(e) => changeAlgo(index, e.target.value)} className="bg-transparent outline-none text-[10px] font-bold text-gray-800 dark:text-gray-100 cursor-pointer w-20">
                                     {getAvailableAlgorithms(algo).map(opt => <option key={opt.value} value={opt.value} className="text-black">{opt.label}</option>)}
                                 </select>
