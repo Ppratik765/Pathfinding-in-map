@@ -1,7 +1,8 @@
-# Pathfinding Algorithm Visualiser
+# GeoViz: Real-World Pathfinding Visualizer
 
-An interactive web application designed to visualise how various pathfinding algorithms work in real-time. Built with React, Vite, and Tailwind CSS, this tool helps users 
-understand graph theory concepts through dynamic animations, weighted terrain generation, and algorithmic performance comparisons.
+GeoViz is an advanced, interactive geospatial analysis tool that visualises pathfinding algorithms on real-world map data. Unlike traditional grid-based visualizers, GeoViz operates on actual street networks fetched dynamically from OpenStreetMap (OSM).
+
+It allows users to render city blocks in 3D, simulate traffic conditions, place roadblocks, and compare the performance of multiple pathfinding algorithms simultaneously in a synchronised multi-viewport environment.
 
 ## Live Demo
 https://pathfinding-lab.vercel.app/
@@ -17,103 +18,121 @@ Pathfinding algorithms are fundamental to computer science, used in everything f
 
 The application focuses on performance and clarity, featuring a comparison mode that allows algorithms to be raced side-by-side and a 3D tilt view for enhanced visualisation.
 
-## Key Features
+## Features
 
-- **Interactive Grid System:** Users can draw walls and weighted terrain directly on the grid using a mouse.
-- **Real-Time Visualisation:** Smooth animations show the algorithm's visiting order (scanning process) and the final calculated shortest path.
-- **Algorithm Comparison Mode:** A split-screen feature allows users to race up to four different algorithms simultaneously to compare execution speed and path efficiency.
-- **Weighted Terrain:** Support for non-binary node weights. Algorithms must decide whether to traverse high-cost nodes (like Water) or go around them.
-- **Procedural Maze Generation:** Includes a Recursive Division algorithm (with randomised loops) to automatically generate complex, solvable mazes.
-- **3D Perspective View:** A CSS-based 3D tilt effect that renders the grid as a three-dimensional board.
-- **Performance Metrics:** precise tracking of execution time (in milliseconds) and total path cost.
-- **Movable Nodes:** The Start and Target nodes can be dragged to any position on the grid.
-- **Responsive Design:** The grid adjusts to the screen size, and the interface features a responsive control bar and dark mode support.
+### Core Functionality
+* **Real-World Data:** Fetches live vector data from OpenStreetMap using the Overpass API to construct a mathematical graph of intersections (nodes) and roads (edges).
+* **Graph Visualisation:** Renders the underlying graph network over the map, showing exactly which paths are traversable.
+* **3D Environment:** Fully extruded 3D buildings and terrain that work in both Light and Dark modes.
+* **Interactive Tools:**
+    * **Start/End:** Place distinct markers for the origin and destination.
+    * **Roadblocks:** Mark specific streets as impassable (infinite weight).
+    * **Traffic:** Simulate heavy traffic conditions (10x weight penalty) to force algorithms to find alternate routes.
 
-## Algorithms Implemented
+### Algorithm Comparison
+* **Multi-View System:** Run up to 4 different algorithms simultaneously on the same map data.
+* **Viewport Synchronisation:** All map instances are locked to a "Master" view. Panning or zooming one map updates all others instantly.
+* **Live Statistics:** Real-time metrics for each algorithm, including:
+    * Total Distance (km)
+    * Execution Time (ms)
+    * Explored Distance (km)
 
-The application includes six major graph traversal algorithms:
-
-1. **Dijkstra's Algorithm:**
-   - Type: Weighted.
-   - Description: The father of pathfinding algorithms. It guarantees the shortest path by exploring nodes in order of their cumulative cost from the start.
-   
-2. **A* Search (A-Star):**
-   - Type: Weighted.
-   - Description: An optimisation of Dijkstra's algorithm that uses a heuristic (Manhattan Distance) to estimate the cost to the goal, guiding the search direction more efficiently.
-
-3. **Breadth-First Search (BFS):**
-   - Type: Unweighted.
-   - Description: Explores the grid layer by layer. It guarantees the shortest path in unweighted graphs but does not account for terrain costs (treats Mud the same as Empty ground).
-
-4. **Depth-First Search (DFS):**
-   - Type: Unweighted.
-   - Description: Explores as far as possible along each branch before backtracking. It is not guaranteed to find the shortest path and often produces winding, inefficient routes.
-
-5. **Greedy Best-First Search:**
-   - Type: Weighted (Heuristic only).
-   - Description: Expands the node that is estimated to be closest to the target. It is very fast but does not guarantee the shortest path.
-
-6. **Bidirectional BFS:**
-   - Type: Unweighted.
-   - Description: Runs two simultaneous breadth-first searches—one from the Start and one from the Target. The algorithm stops when the two searches meet in the middle.
-
-## Terrain and Weights
-
-To demonstrate the difference between "shortest distance" (steps) and "lowest cost" (effort), the grid supports different terrain types:
-
-- **Empty Node:** Cost = 1 (Default movement)
-- **Forest:** Cost = 3 (Represented by tree icons)
-- **Mud:** Cost = 5 (Represented by brown tiles)
-- **Water:** Cost = 10 (Represented by blue wave icons)
-- **Wall:** Impassable
-
-*Note: Unweighted algorithms like BFS and DFS treat all traversable nodes as having a cost of 1, effectively ignoring terrain difficulty.*
+### Supported Algorithms
+1.  **Dijkstra's Algorithm:** The father of pathfinding. Guarantees the shortest path.
+2.  **A* Search (A-Star):** Uses heuristics (physical distance) to optimise the search direction. accurate and fast.
+3.  **Breadth-First Search (BFS):** Explores equally in all directions. Unweighted (ignores traffic/distance costs).
+4.  **Depth-First Search (DFS):** Explores as far as possible along each branch before backtracking. Not guaranteed to find the shortest path.
+5.  **Greedy Best-First Search:** Prioritises paths that appear to be closer to the goal. Very fast but not always optimal.
+6.  **Bidirectional Search:** Runs two simultaneous searches (one from start, one from end) that meet in the middle.
 
 ## Technology Stack
 
-- **Frontend Framework:** React (v18+)
-- **Build Tool:** Vite
-- **Styling:** Tailwind CSS
-- **Icons:** Lucide React
-- **Language:** JavaScript (ES6+)
+* **Frontend Framework:** React (Vite)
+* **Language:** JavaScript (ES6+)
+* **Styling:** Tailwind CSS
+* **Map Rendering:** MapLibre GL JS (Open-source fork of Mapbox GL)
+* **Map Tiles & Geocoding:** MapTiler Cloud
+* **Geospatial Analysis:** Turf.js (Distance calculations, point-in-polygon)
+* **Data Source:** Overpass API (OpenStreetMap data fetching)
+* **Data Conversion:** osmtogeojson (Converts OSM XML to GeoJSON)
 
-## Installation and Setup
+## Prerequisites
 
-To run this project locally on your machine, follow these steps:
+Before running the project, ensure you have the following installed:
+* Node.js (v16.0.0 or higher)
+* npm (v7.0.0 or higher)
 
-1. Clone the repository:
-   git clone https://github.com/your-username/pathfinding-viz.git
+You will also need a free API Key from MapTiler.
 
-2. Navigate to the project directory:
-   cd pathfinding-viz
+## Installation
 
-3. Install dependencies:
-   npm install
+1.  **Clone the Repository**
+    ```bash
+    git clone [https://github.com/yourusername/geoviz.git](https://github.com/yourusername/geoviz.git)
+    cd geoviz
+    ```
 
-4. Start the development server:
-   npm run dev
+2.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
 
-5. Open your browser and navigate to the local URL provided (usually http://localhost:5173).
+3.  **Configure Environment Variables**
+    Create a file named `.env` in the root directory of the project. Add your MapTiler API key:
+    ```env
+    VITE_MAPTILER_KEY=your_maptiler_api_key_here
+    ```
+
+4.  **Run the Development Server**
+    ```bash
+    npm run dev
+    ```
+
+5.  **Build for Production**
+    ```bash
+    npm run build
+    ```
 
 ## Usage Guide
 
-1. **Draw the Board:** Click and drag on the grid to create Walls. Use the "Weight" tools in the menu to paint Forest, Mud, or Water.
-2. **Move Points:** Click and drag the Green (Start) or Red (Target) icons to change their positions.
-3. **Select Algorithm:** Choose an algorithm from the dropdown menu (e.g., Dijkstra).
-4. **Compare (Optional):** Click the "+" button to add more grids. Select different algorithms for each to compare them side-by-side.
-5. **Run:** Click the "Run" button to start the visualization.
-6. **Analyze:** Watch the "Time" and "Cost" metrics in the header of each grid.
-   - **Time:** How long the CPU took to calculate the path.
-   - **Cost:** The total "weight" of the final path found.
-7. **Reset:** Use "Clear Board" to remove walls or "Reset" to clear the path data while keeping the walls.
+### 1. Loading a Location
+* Use the Search Bar in the top header to find a city (e.g., "Paris", "New York", "Tokyo").
+* **Important:** You must zoom in to a specific neighborhood or city block (Zoom level 13+).
+* Click the **LOAD** button. The app will fetch road data for the visible area. Wait for the status to say "Graph Ready".
+
+### 2. Setting Up the Simulation
+* **Start/End:** Select the Start (Green) or End (Red) tool from the toolbar and click on any highlighted road segment.
+* **Obstacles:** Select "Block" (Wall icon) to cut off roads, or "Slow" (Traffic Cone) to increase travel cost on specific streets.
+
+### 3. Running Algorithms
+* Select an algorithm from the dropdown menu on the top-left of the map card.
+* Click **RUN** in the main header.
+* Watch the animation as the algorithm explores the graph (Blue lines) and finds the final path (Orange line).
+
+### 4. Comparing Algorithms
+* Click the **+ (Plus)** icon in the menu bar to add a new map view.
+* Select a different algorithm for the new view.
+* Both maps share the same Start, End, and Obstacles.
+* Click **RUN** to race them against each other.
 
 ## Project Structure
 
-- src/
-  - algorithms.js: Contains the pure logic for all pathfinding and maze generation algorithms.
-  - components/
-    - Grid.jsx: The main component handling the grid rendering, animations, and mouse interactions.
-    - Node.jsx: (Optional/Implicit) Represents individual cells.
-  - App.jsx: The root component handling the layout, control bar, and global state management.
-  - index.css: Global styles and Tailwind imports.
-- labyrinth.png: Custom favicon/icon for the browser tab.
+```text
+src/
+├── algorithms/          # Pathfinding logic
+│   └── mapAlgorithms.js # Implementation of Dijkstra, A*, BFS, etc.
+├── components/          # React components
+│   ├── Background.jsx   # Particle network background effect
+│   └── MapBoard.jsx     # Main map canvas and interaction logic
+├── utils/               # Helper functions
+│   └── graphUtils.js    # Overpass API fetching and Graph construction
+├── App.jsx              # Main layout and state management
+├── main.jsx             # Entry point
+└── index.css            # Global styles and Tailwind directives
+```
+## Troubleshooting
+**"Area too large! Zoom in closer."** The Overpass API has strict data limits. If you try to load an entire country or a massive city at once, the request will time out. Zoom into a neighbourhood level to ensure a successful graph build.
+
+**"No roads found here."** Ensure you are looking at an area with mapped roads. Some rural areas or bodies of water may not have valid "highway" tags in OpenStreetMap.
+
+**Map is black/blank** Ensure your `.env` file is created correctly and contains a valid `VITE_MAPTILER_KEY`.
