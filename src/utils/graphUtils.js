@@ -11,7 +11,7 @@ const SERVERS = [
 
 export const fetchRoadNetwork = async (bounds, zoom) => {
   // 1. Zoom Check
-  if (zoom < 11) {
+  if (zoom < 12) {
       return { error: "Map is too big, zoom in closer!." };
   }
 

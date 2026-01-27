@@ -122,7 +122,7 @@ export const MapBoard = forwardRef(({
   const setupLayers = () => {
       const m = map.current;
       if(!m) return;
-      const sources = ['visited', 'path', 'roads', 'graph-network', 'area-boundary'];
+      const sources = ['visited', 'path', 'roads', 'graph-network', 'area-boundary', 'obstacles'];
       sources.forEach(s => { if(!m.getSource(s)) m.addSource(s, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); });
 
       // Init Color
