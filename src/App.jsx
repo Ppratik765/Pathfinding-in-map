@@ -99,10 +99,10 @@ function App() {
         <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
             <Info size={20} />
         </button>
-        {/* FIX: Left Alignment for Mobile, Higher Z-Index */}
-        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[90vw] sm:w-[300px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-sm leading-relaxed">
-            <h3 className="font-bold text-base mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
-            <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
+        {/* FIX: Width reduced to 250px (Desktop) & 85vw (Mobile). Left aligned on mobile. */}
+        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[85vw] sm:w-[250px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
+            <h3 className="font-bold text-sm mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
+            <ol className="list-decimal pl-4 space-y-1.5 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
                 <li><span className="font-bold text-blue-500">Zoom In</span> (Level 11+).</li>
                 <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span>.</li>
@@ -132,8 +132,8 @@ function App() {
   );
 
   const LoadBtn = () => (
-    // FIX: Changed w-full to w-auto for mobile to fit in row 2
-    <button onClick={handleLoadRoads} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all w-auto"><MapIcon size={14} /> LOAD</button>
+    // FIX: Smaller padding/text for mobile to fit in row
+    <button onClick={handleLoadRoads} className="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[10px] sm:text-xs shadow-lg hover:-translate-y-0.5 transition-all w-auto whitespace-nowrap"><MapIcon size={14} /> LOAD</button>
   );
 
   const RunBtn = () => (
@@ -160,6 +160,23 @@ function App() {
     <div className="min-h-screen w-full flex flex-col items-center font-sans text-gray-800 dark:text-gray-100 relative pb-10 overflow-x-hidden">
       <Background darkMode={darkMode} />
       
+      {/* CSS FIX FOR GEOCODER (Forces search bar to fit container) */}
+      <style>{`
+        .maplibregl-ctrl-geocoder { 
+            min-width: 0 !important; 
+            width: 100% !important; 
+            max-width: 100% !important;
+            box-shadow: none !important;
+            background: transparent !important;
+        }
+        .maplibregl-ctrl-geocoder--input {
+            width: 100% !important;
+            height: 32px !important;
+            padding: 5px 30px !important;
+            font-size: 12px !important;
+        }
+      `}</style>
+
       {/* HEADER */}
       <div className="w-full max-w-7xl z-50 p-4 relative">
         <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 border border-gray-200 dark:border-gray-700">
@@ -170,7 +187,6 @@ function App() {
                     <MapIcon className="text-blue-500" size={24} /> Way<span className="text-blue-600 dark:text-blue-400">Finder</span>
                 </h1>
                 
-                {/* Mobile Top Row Extras */}
                 <div className="flex items-center gap-1 md:hidden">
                     <InfoTooltip />
                     <MapCountControls />
@@ -181,18 +197,18 @@ function App() {
             
             {/* ROW 2 (Mobile) / CENTER (Desktop) */}
             <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none">
-                 {/* FIX: min-w-0 allows this container to shrink if needed */}
-                 <div id="geocoder-container" className="flex-1 h-10 relative pt-1 min-w-0"></div>
+                 {/* FIX: flex-1 ensures it takes available space, but LoadBtn takes what it needs */}
+                 <div id="geocoder-container" className="flex-1 h-8 relative pt-0 min-w-0"></div>
                  <div className="hidden md:block"><InfoTooltip /></div>
-                 {/* FIX: Flex-none prevents squishing the button */}
-                 <div className="md:hidden flex-none"><LoadBtn /></div>
+                 
+                 {/* FIX: shrink-0 prevents the button from being squashed */}
+                 <div className="md:hidden shrink-0"><LoadBtn /></div>
             </div>
 
             {/* ROW 3 (Mobile) / RIGHT (Desktop) */}
             <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-3 order-3 md:order-none">
                 <ToolsGroup />
                 
-                {/* Desktop Controls */}
                 <div className="hidden md:flex items-center gap-2">
                     <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
                     <MapCountControls />
@@ -203,12 +219,10 @@ function App() {
                     <ThemeToggle />
                 </div>
 
-                {/* Mobile Run */}
                 <div className="md:hidden w-auto"><RunBtn /></div>
             </div>
         </div>
         
-        {/* FIX: -z-10 pushes this text behind the tooltip */}
         <div className={clsx("text-center mt-1 text-[10px] font-mono relative -z-10", isError ? "text-red-500 font-bold" : "opacity-50")}>{status}</div>
       </div>
 
