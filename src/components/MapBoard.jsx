@@ -108,7 +108,7 @@ export const MapBoard = forwardRef(({
             onViewChange(map.current.getCenter(), map.current.getZoom(), map.current.getPitch(), map.current.getBearing());
             if (lastLoadedCenter.current) {
                 const dist = map.current.getCenter().distanceTo(lastLoadedCenter.current);
-                if (dist > 15000) { if (onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms"); }
+                if (dist > 23000) { if (onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms"); }
             }
         }
     });
