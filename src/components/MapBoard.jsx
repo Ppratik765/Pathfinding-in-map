@@ -333,8 +333,8 @@ export const MapBoard = forwardRef(({
                     i++;
                 }
                 
-                // Render to DOM (Slow) -> Throttled to 40ms (~25 FPS)
-                if (timestamp - lastDrawTime > 35) {
+                // Render to DOM (Slow) -> Throttled to 20ms (50 FPS)
+                if (timestamp - lastDrawTime > 20) {
                     if (map.current.getSource('visited')) {
                         map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
                     }
