@@ -99,61 +99,74 @@ function App() {
       
       {/* HEADER */}
       <div className="w-full max-w-7xl z-50 p-4 relative">
-        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3 min-w-fit">
-                <h1 className="text-xl font-extrabold flex items-center gap-2">
-                    <MapIcon className="text-blue-500" size={24} /> Way<span className="text-blue-600 dark:text-blue-400">Finder</span>
-                </h1>
-            </div>
+        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-3 py-3 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row items-center gap-3">
             
-            {/* SEARCH + INFO (Fixed Alignment) */}
-            <div className="flex-1 min-w-[250px] relative z-50 order-3 md:order-2 flex items-center gap-2">
-                 {/* Search bar container */}
-                 <div id="geocoder-container" className="flex-1 h-10 relative pt-1"></div>
-                 
-                 {/* INFO BUTTON */}
-                 <div className="relative group shrink-0">
-                    <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
-                        <Info size={20} />
-                    </button>
-                    <div className="absolute top-12 left-1/2 -translate-x-1/2 w-[300px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[60] text-sm leading-relaxed">
-                        <h3 className="font-bold text-base mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
-                        <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
-                            <li><span className="font-bold text-blue-500">Search</span> or drag to a city location.</li>
-                            <li><span className="font-bold text-blue-500">Zoom In</span> till your desired level.</li>
-                            <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span> to scan the road network.</li>
-                            <li>Select <span className="font-bold text-green-600">Start</span> tool and click on a <b>road line</b>.</li>
-                            <li>Select <span className="font-bold text-red-600">End</span> tool and click on another road.</li>
-                            <li>(Optional) Add <span className="font-bold">Walls</span> or <span className="font-bold text-orange-500">Traffic</span> to block paths.</li>
-                            <li>Click <span className="font-bold bg-green-100 dark:bg-green-900/30 px-1 rounded text-green-600 dark:text-green-400">RUN</span> to watch the algorithm race!</li>
-                        </ol>
+            {/* ROW 1 (Mobile): Title, Info, Reset, Theme */}
+            <div className="w-full md:w-auto flex justify-between items-center md:gap-4">
+                <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-extrabold flex items-center gap-2">
+                        <MapIcon className="text-blue-500" size={24} /> Way<span className="text-blue-600 dark:text-blue-400">Finder</span>
+                    </h1>
+                    {/* Info Button */}
+                    <div className="relative group">
+                        <button className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
+                            <Info size={18} />
+                        </button>
+                        {/* Tooltip */}
+                        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[280px] md:w-[300px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[60] text-sm leading-relaxed">
+                            <h3 className="font-bold text-base mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
+                            <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
+                                <li><span className="font-bold text-blue-500">Search</span> or drag to a city location.</li>
+                                <li><span className="font-bold text-blue-500">Zoom In</span> till your desired level.</li>
+                                <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span> to scan.</li>
+                                <li>Select <span className="font-bold text-green-600">Start</span> & <span className="font-bold text-red-600">End</span> points.</li>
+                                <li>Add <span className="font-bold">Walls</span> or <span className="font-bold text-orange-500">Traffic</span>.</li>
+                                <li>Click <span className="font-bold bg-green-100 dark:bg-green-900/30 px-1 rounded text-green-600 dark:text-green-400">RUN</span>.</li>
+                            </ol>
+                        </div>
                     </div>
                 </div>
+
+                <div className="flex gap-2 md:hidden">
+                    <button onClick={handleReset} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"><RefreshCw size={18}/></button>
+                    <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-gray-800 rounded-xl transition-colors">{darkMode ? <Sun size={18}/> : <Moon size={18}/>}</button>
+                </div>
+            </div>
+            
+            {/* ROW 2 (Mobile): Search & Load */}
+            <div className="w-full md:flex-1 flex gap-2 items-center">
+                 <div id="geocoder-container" className="flex-1 h-10 relative pt-1"></div>
+                 <button onClick={handleLoadRoads} className="flex items-center gap-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all whitespace-nowrap h-10"><MapIcon size={14} /> LOAD</button>
             </div>
 
-            <div className="flex items-center gap-3 order-2 md:order-3">
-                <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+            {/* ROW 3 (Mobile): Tools, MapCount, Run (Hidden Reset/Theme on Mobile here, shown on Desktop) */}
+            <div className="w-full md:w-auto flex justify-between md:justify-end items-center gap-2">
+                {/* Tools */}
+                <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl overflow-x-auto no-scrollbar">
                     {[
                         { id: 'start', icon: MousePointer2, label: 'Start', col: 'text-green-600' },
                         { id: 'end', icon: MousePointer2, label: 'End', col: 'text-red-600' },
                         { id: 'wall', icon: BrickWall, label: 'Block', col: 'text-gray-600 dark:text-gray-300' },
                         { id: 'traffic', icon: TrafficCone, label: 'Slow', col: 'text-orange-500' }
                     ].map(t => (
-                        <button key={t.id} onClick={() => setTool(t.id)} className={clsx("flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all", tool === t.id ? `bg-white dark:bg-gray-600 shadow-md ${t.col} scale-105` : "opacity-60 hover:opacity-100")}>
-                            <t.icon size={14} /> {t.label}
+                        <button key={t.id} onClick={() => setTool(t.id)} className={clsx("flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap", tool === t.id ? `bg-white dark:bg-gray-600 shadow-md ${t.col} scale-105` : "opacity-60 hover:opacity-100")}>
+                            <t.icon size={14} /> <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden">{t.label.charAt(0)}</span>
                         </button>
                     ))}
                 </div>
-                <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
+
+                {/* Map Counter */}
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-                    <button onClick={removeMap} disabled={activeAlgos.length <= 1} className="p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded-lg disabled:opacity-30"><Minus size={16}/></button>
-                    <span className="text-sm font-bold w-4 text-center">{activeAlgos.length}</span>
-                    <button onClick={addMap} disabled={activeAlgos.length >= 4} className="p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded-lg disabled:opacity-30"><Plus size={16}/></button>
+                    <button onClick={removeMap} disabled={activeAlgos.length <= 1} className="p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded-lg disabled:opacity-30"><Minus size={14}/></button>
+                    <span className="text-xs font-bold w-3 text-center">{activeAlgos.length}</span>
+                    <button onClick={addMap} disabled={activeAlgos.length >= 4} className="p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded-lg disabled:opacity-30"><Plus size={14}/></button>
                 </div>
-                <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
-                <div className="flex gap-2">
-                    <button onClick={handleLoadRoads} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all"><MapIcon size={14} /> LOAD</button>
-                    <button onClick={handleRun} className="flex items-center gap-2 px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all"><Play size={14} /> RUN</button>
+
+                {/* Run Button */}
+                <button onClick={handleRun} className="flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all h-10"><Play size={14} /> RUN</button>
+
+                {/* Desktop Only: Reset & Theme */}
+                <div className="hidden md:flex gap-1">
                     <button onClick={handleReset} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"><RefreshCw size={18}/></button>
                     <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-gray-800 rounded-xl transition-colors">{darkMode ? <Sun size={18}/> : <Moon size={18}/>}</button>
                 </div>
@@ -162,7 +175,7 @@ function App() {
         <div className={clsx("text-center mt-1 text-[10px] font-mono", isError ? "text-red-500 font-bold" : "opacity-50")}>{status}</div>
       </div>
 
-{/* CANVAS AREA */}
+      {/* CANVAS AREA */}
       <div className="flex-1 w-full max-w-7xl p-4 flex flex-wrap justify-center content-start gap-6">
         {activeAlgos.map((algo, index) => {
             let widthClass = "w-full max-w-5xl"; 
@@ -182,7 +195,7 @@ function App() {
                             {index === 0 && (
                                 <button onClick={() => setShowPerimeter(!showPerimeter)} className="flex items-center gap-1 px-1.5 bg-gray-200 dark:bg-gray-800 rounded hover:bg-blue-100 text-gray-700 dark:text-gray-300 transition-colors h-6" title="Toggle Loaded Area">
                                     <CheckSquare size={12} className={showPerimeter ? "text-blue-500" : "opacity-40"} />
-                                    <span className="opacity-50 text-[9px] font-bold uppercase tracking-tight">Show loaded area</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-tight">Area</span>
                                 </button>
                             )}
 
@@ -195,20 +208,20 @@ function App() {
 
                             {/* MINI DROPDOWN */}
                             <div className="bg-white dark:bg-gray-800 px-2 rounded border border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-1.5 h-6">
-                                <span className="opacity-50 text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Algo {index+1}</span>
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Algo {index+1}</span>
                                 <select value={algo} onChange={(e) => changeAlgo(index, e.target.value)} className="bg-transparent outline-none text-[10px] font-bold text-gray-800 dark:text-gray-100 cursor-pointer w-20">
                                     {getAvailableAlgorithms(algo).map(opt => <option key={opt.value} value={opt.value} className="text-black">{opt.label}</option>)}
                                 </select>
                             </div>
                         </div>
 
-                        {/* RIGHT GROUP: COMPACT STATS */}
-                        <div className={`transition-opacity duration-500 ${results[index] ? 'opacity-70' : 'opacity-0'} bg-white dark:bg-gray-800 px-2 rounded border border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-2 text-[10px] font-mono h-6 ml-1`}>
-                             <div className="flex gap-0.5"><span className="opacity-40">Dist:</span><span className="font-bold text-orange-500">{results[index]?.cost}km</span></div>
+                        {/* RIGHT GROUP: SUPER COMPACT STATS (D, T, E) */}
+                        <div className={`transition-opacity duration-500 ${results[index] ? 'opacity-100' : 'opacity-0'} bg-white dark:bg-gray-800 px-2 rounded border border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-2 text-[10px] font-mono h-6 ml-1`}>
+                             <div className="flex gap-0.5"><span className="opacity-40">D:</span><span className="font-bold text-orange-500">{results[index]?.cost}km</span></div>
                              <div className="w-px h-2.5 bg-gray-300 dark:bg-gray-600"></div>
-                             <div className="flex gap-0.5"><span className="opacity-40">Time:</span><span className="font-bold">{results[index]?.time}ms</span></div>
+                             <div className="flex gap-0.5"><span className="opacity-40">T:</span><span className="font-bold">{results[index]?.time}ms</span></div>
                              <div className="w-px h-2.5 bg-gray-300 dark:bg-gray-600"></div>
-                             <div className="flex gap-0.5"><span className="opacity-40">Explored:</span><span className="font-bold text-blue-500">{results[index]?.exploredDist}km</span></div>
+                             <div className="flex gap-0.5"><span className="opacity-40">E:</span><span className="font-bold text-blue-500">{results[index]?.exploredDist}km</span></div>
                         </div>
                     </div>
 
