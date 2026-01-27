@@ -50,6 +50,22 @@ export const MapBoard = forwardRef(({
   useEffect(() => { sharedDataRef.current = sharedData; }, [sharedData]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
 
+  useEffect(() => { 
+      if (map.current && map.current.getSource('roads')) {
+          if (sharedData.geojson) {
+              map.current.getSource('roads').setData(sharedData.geojson);
+              // Draw Box if data exists
+              // ... existing box drawing logic ...
+          } else {
+              // RESET: Clear data
+              map.current.getSource('roads').setData({ type: 'FeatureCollection', features: [] });
+              if (map.current.getSource('area-boundary')) {
+                  map.current.getSource('area-boundary').setData({ type: 'FeatureCollection', features: [] });
+              }
+          }
+      }
+  }, [sharedData.geojson]);
+
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
     

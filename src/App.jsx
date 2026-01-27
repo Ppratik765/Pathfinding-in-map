@@ -56,7 +56,6 @@ function App() {
   };
   
   const handleReset = () => { 
-      // Fully Wipe Data
       setSharedData({ geojson: null, graph: null, start: null, end: null, obstacles: {} }); 
       setResults({});
       setFinishedCount(0);
@@ -100,8 +99,8 @@ function App() {
         <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
             <Info size={20} />
         </button>
-        {/* FIX: Z-Index 100, Position Fixed for Mobile */}
-        <div className="absolute top-10 right-0 md:right-auto md:left-1/2 md:-translate-x-1/2 w-[280px] sm:w-[300px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-sm leading-relaxed">
+        {/* FIX: Left Alignment for Mobile, Higher Z-Index */}
+        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[90vw] sm:w-[300px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-sm leading-relaxed">
             <h3 className="font-bold text-base mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
             <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
@@ -133,16 +132,15 @@ function App() {
   );
 
   const LoadBtn = () => (
-    <button onClick={handleLoadRoads} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all w-full md:w-auto"><MapIcon size={14} /> LOAD</button>
+    // FIX: Changed w-full to w-auto for mobile to fit in row 2
+    <button onClick={handleLoadRoads} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all w-auto"><MapIcon size={14} /> LOAD</button>
   );
 
   const RunBtn = () => (
-    // FIX: Reduced px-3 for mobile to fit better
     <button onClick={handleRun} className="flex items-center justify-center gap-2 px-3 md:px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all w-full md:w-auto whitespace-nowrap"><Play size={14} /> RUN</button>
   );
 
   const ToolsGroup = () => (
-    // FIX: Changed w-full to flex-1 so it shares space with RunBtn
     <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl flex-1 md:flex-none justify-center md:justify-start">
         {[
             { id: 'start', icon: MousePointer2, label: 'Start', col: 'text-green-600' },
@@ -183,13 +181,14 @@ function App() {
             
             {/* ROW 2 (Mobile) / CENTER (Desktop) */}
             <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none">
-                 <div id="geocoder-container" className="flex-1 h-10 relative pt-1"></div>
+                 {/* FIX: min-w-0 allows this container to shrink if needed */}
+                 <div id="geocoder-container" className="flex-1 h-10 relative pt-1 min-w-0"></div>
                  <div className="hidden md:block"><InfoTooltip /></div>
-                 <div className="md:hidden"><LoadBtn /></div>
+                 {/* FIX: Flex-none prevents squishing the button */}
+                 <div className="md:hidden flex-none"><LoadBtn /></div>
             </div>
 
             {/* ROW 3 (Mobile) / RIGHT (Desktop) */}
-            {/* FIX: Removed w-full, let flexbox handle it */}
             <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-3 order-3 md:order-none">
                 <ToolsGroup />
                 
@@ -204,12 +203,13 @@ function App() {
                     <ThemeToggle />
                 </div>
 
-                {/* Mobile Run: w-auto to fit next to tools */}
+                {/* Mobile Run */}
                 <div className="md:hidden w-auto"><RunBtn /></div>
             </div>
         </div>
         
-        <div className={clsx("text-center mt-1 text-[10px] font-mono", isError ? "text-red-500 font-bold" : "opacity-50")}>{status}</div>
+        {/* FIX: -z-10 pushes this text behind the tooltip */}
+        <div className={clsx("text-center mt-1 text-[10px] font-mono relative -z-10", isError ? "text-red-500 font-bold" : "opacity-50")}>{status}</div>
       </div>
 
       {/* CANVAS AREA */}
