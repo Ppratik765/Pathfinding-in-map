@@ -47,42 +47,53 @@ export const MapBoard = forwardRef(({
   const activeToolRef = useRef(activeTool);
   const lastLoadedCenter = useRef(null);
   
-  // FIX: Track the animation frame ID to cancel it later
-  const currentAnimationId = useRef(null);
+  // FIX: Track BOTH animation frame and timeout ID
+  const animationFrameId = useRef(null);
+  const animationTimeoutId = useRef(null);
 
   useEffect(() => { sharedDataRef.current = sharedData; }, [sharedData]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
 
-  // FIX: Helper to kill any running loop
-  const cancelAnimation = () => {
-      if (currentAnimationId.current) {
-          cancelAnimationFrame(currentAnimationId.current);
-          currentAnimationId.current = null;
+  // --- CRITICAL FIX: STOP EVERYTHING HELPER ---
+  const stopEverything = () => {
+      if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+          animationFrameId.current = null;
+      }
+      if (animationTimeoutId.current) {
+          clearTimeout(animationTimeoutId.current);
+          animationTimeoutId.current = null;
       }
   };
+
+  // Cleanup on unmount (Prevents memory leaks if you delete a map)
+  useEffect(() => {
+      return () => stopEverything();
+  }, []);
 
   useEffect(() => { 
       if (map.current && map.current.getSource('roads')) {
           if (sharedData.geojson) {
               map.current.getSource('roads').setData(sharedData.geojson);
-              // Note: Only redraw box if bounds logic exists here or parent handles it
           } else {
-              // RESET: Clear data & kill animation
-              cancelAnimation();
+              // RESET: Clear data & kill processes
+              stopEverything();
               map.current.getSource('roads').setData({ type: 'FeatureCollection', features: [] });
               if (map.current.getSource('area-boundary')) {
                   map.current.getSource('area-boundary').setData({ type: 'FeatureCollection', features: [] });
               }
+              // Clear visual artifacts
+              if(map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
+              if(map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
           }
       }
   }, [sharedData.geojson]);
 
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
-    
     if (map.current.getLayer('area-glow')) {
         map.current.setLayoutProperty('area-glow', 'visibility', showPerimeter ? 'visible' : 'none');
-        const color = darkMode ? '#0000FF' : '#FFFF00';
+        const color = darkMode ? '#0000FF' : '#ff7b00';
         map.current.setPaintProperty('area-glow', 'line-color', color);
     }
   }, [showPerimeter, darkMode]);
@@ -117,7 +128,7 @@ export const MapBoard = forwardRef(({
             onViewChange(map.current.getCenter(), map.current.getZoom(), map.current.getPitch(), map.current.getBearing());
             if (lastLoadedCenter.current) {
                 const dist = map.current.getCenter().distanceTo(lastLoadedCenter.current);
-                if (dist > 25000) { if (onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms"); }
+                if (dist > 25000 && onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms");
             }
         }
     });
@@ -135,7 +146,7 @@ export const MapBoard = forwardRef(({
       const sources = ['visited', 'path', 'roads', 'graph-network', 'area-boundary', 'obstacles'];
       sources.forEach(s => { if(!m.getSource(s)) m.addSource(s, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); });
 
-      const perimeterColor = darkMode ? '#0000FF' : '#ff9900';
+      const perimeterColor = darkMode ? '#0000FF' : '#FFFF00';
 
       if(!m.getLayer('graph-layer')) m.addLayer({
           id: 'graph-layer', type: 'line', source: 'roads',
@@ -194,7 +205,7 @@ export const MapBoard = forwardRef(({
   };
 
   const loadRoadsInternal = async () => {
-      if(onStatus) onStatus("Scanning...");
+      if(onStatus) onStatus("Scanning for road networks...");
       const bounds = map.current.getBounds();
       const zoom = map.current.getZoom(); 
       const bbox = { south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast() };
@@ -220,9 +231,9 @@ export const MapBoard = forwardRef(({
           };
           if(map.current.getSource('area-boundary')) map.current.getSource('area-boundary').setData(polygon);
 
-          if(onStatus) onStatus(`Graph ready for roads inside perimeter, ${geojson.features.length} segments`);
+          if(onStatus) onStatus(`Graph ready for roads inside green perimeter, ${geojson.features.length} segments`);
       } else {
-          if(onStatus) onStatus("Map is too large to load in. Zoom in closer!");
+          if(onStatus) onStatus("Map in too large to load in. Zoom in closer!");
       }
   };
 
@@ -268,38 +279,38 @@ export const MapBoard = forwardRef(({
   useImperativeHandle(ref, () => ({
     loadRoads: loadRoadsInternal,
     reset: () => { 
-        cancelAnimation(); // FIX: Kill loop
-        map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
-        map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
+        stopEverything(); // KILL PROCESSES
+        if (map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
+        if (map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
     },
     run: () => {
         if(!sharedData.graph || !sharedData.start || !sharedData.end) return;
         
-        // FIX: Start fresh. Kill previous loop.
-        cancelAnimation();
+        // KILL PREVIOUS RUN & TIMER
+        stopEverything();
         
-        map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
-        map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
+        if (map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
+        if (map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
 
-        // Add a tiny delay to ensure React state/map sources settle before heavy calc
-        setTimeout(() => {
+        // Store Timeout ID to be cancelable
+        animationTimeoutId.current = setTimeout(() => {
             const result = runAlgorithm(algoType, sharedData.graph, sharedData.start.id, sharedData.end.id);
             const { visitedOrder, path, time, cost, visitedCount, exploredDist } = result;
             
             let i = 0;
             const totalSteps = visitedOrder.length;
-            const stepsPerFrame = 90; // Adjust for speed
+            const stepsPerFrame = 90; 
             const visitedFeatures = [];
 
             const animate = () => {
                 if(i >= totalSteps) {
-                    if (path.length) {
+                    if (path.length && map.current.getSource('path')) {
                         const pathCoords = path.map(id => [sharedData.graph[id].lng, sharedData.graph[id].lat]);
                         map.current.getSource('path').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoords } }] });
                     }
                     const finalStats = { time, cost, visited: visitedCount, exploredDist };
                     setTimeout(() => { if (onResult) onResult(finalStats); }, 500);
-                    currentAnimationId.current = null; // Done
+                    animationFrameId.current = null; // Done
                     return;
                 }
                 
@@ -308,7 +319,6 @@ export const MapBoard = forwardRef(({
                     if (item.from) {
                         const fromNode = sharedData.graph[item.from];
                         const toNode = sharedData.graph[item.id];
-                        // Only add valid lines
                         if(fromNode && toNode) {
                             visitedFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]] } });
                         }
@@ -316,15 +326,15 @@ export const MapBoard = forwardRef(({
                     i++;
                 }
                 
-                // Batch update
-                map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+                if (map.current.getSource('visited')) {
+                    map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+                }
                 
-                currentAnimationId.current = requestAnimationFrame(animate);
+                animationFrameId.current = requestAnimationFrame(animate);
             };
             
-            // Start the loop
-            currentAnimationId.current = requestAnimationFrame(animate);
-        }, 10);
+            animationFrameId.current = requestAnimationFrame(animate);
+        }, 50); // Tiny delay to allow UI to update before freeze
     }
   }));
 
