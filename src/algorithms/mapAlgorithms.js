@@ -235,6 +235,7 @@ const runGreedy = (graph, start, end) => {
   return { visitedOrder, path: reconstructPath(previous, end), previous };
 };
 
+// --- FIX: BIDIRECTIONAL USES REVERSE NEIGHBORS ---
 const runBidirectional = (graph, start, end) => {
   const distStart = { [start]: 0 };
   const distEnd = { [end]: 0 };
@@ -255,7 +256,7 @@ const runBidirectional = (graph, start, end) => {
   let bestMeetDist = Infinity;
 
   while (pqStart.length && pqEnd.length) {
-    // 1. Forward
+    // 1. Forward (Normal neighbors)
     if (pqStart.length) {
         const { id: curr, dist: d } = pqStart.pop();
         if (!visitedStart.has(curr)) {
@@ -267,7 +268,6 @@ const runBidirectional = (graph, start, end) => {
                 if (total < bestMeetDist) { bestMeetDist = total; bestMeetNode = curr; }
             }
 
-            // Pruning: if current path is already longer than best known path, don't expand neighbors
             if (d < bestMeetDist) {
                 for (const edge of graph[curr].neighbors) {
                     if(edge.weight === Infinity) continue;
@@ -282,7 +282,8 @@ const runBidirectional = (graph, start, end) => {
         }
     }
 
-    // 2. Backward
+    // 2. Backward (FIX: Use REVERSE neighbors)
+    // We are walking FROM the end, UPSTREAM against traffic
     if (pqEnd.length) {
         const { id: curr, dist: d } = pqEnd.pop();
         if (!visitedEnd.has(curr)) {
@@ -295,7 +296,11 @@ const runBidirectional = (graph, start, end) => {
             }
 
             if (d < bestMeetDist) {
-                for (const edge of graph[curr].neighbors) {
+                // FIX: Check reverseNeighbors instead of neighbors
+                // This ensures we only walk backwards along valid incoming one-way streets
+                const neighbors = graph[curr].reverseNeighbors || [];
+                
+                for (const edge of neighbors) {
                     if(edge.weight === Infinity) continue;
                     const newDist = d + edge.weight;
                     if (newDist < (distEnd[edge.node] ?? Infinity)) {
@@ -308,26 +313,17 @@ const runBidirectional = (graph, start, end) => {
         }
     }
 
-    // Termination Check
     if (bestMeetNode) {
          const topStart = pqStart.length ? pqStart.heap[0].dist : Infinity;
          const topEnd = pqEnd.length ? pqEnd.heap[0].dist : Infinity;
          if (topStart + topEnd >= bestMeetDist) {
-             return { 
-                 visitedOrder, 
-                 path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd),
-                 totalCost: bestMeetDist // FIX: Return exact calculated cost
-             };
+             return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd), totalCost: bestMeetDist };
          }
     }
   }
   
   if (bestMeetNode) {
-      return { 
-          visitedOrder, 
-          path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd),
-          totalCost: bestMeetDist 
-      };
+      return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd), totalCost: bestMeetDist };
   }
   return { visitedOrder, path: [] };
 };

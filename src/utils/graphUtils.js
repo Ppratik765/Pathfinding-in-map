@@ -77,6 +77,8 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
     if (feature.geometry.type === 'LineString') {
       const coords = feature.geometry.coordinates;
       const props = feature.properties || {};
+      
+      // Strict Realism: Respect one-way tags
       const isOneWay = props.oneway === 'yes' || props.junction === 'roundabout';
 
       for (let i = 0; i < coords.length - 1; i++) {
@@ -91,11 +93,21 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
         if (obstacles[toId] === 'block' || obstacles[fromId] === 'block') weight = Infinity;
         else if (obstacles[toId] === 'traffic' || obstacles[fromId] === 'traffic') weight *= 10;
 
-        if (!nodes[fromId]) nodes[fromId] = { id: fromId, lng: from[0], lat: from[1], neighbors: [] };
-        if (!nodes[toId]) nodes[toId] = { id: toId, lng: to[0], lat: to[1], neighbors: [] };
+        // Initialize node structure with BOTH neighbors (Forward) and reverseNeighbors (Backward)
+        if (!nodes[fromId]) nodes[fromId] = { id: fromId, lng: from[0], lat: from[1], neighbors: [], reverseNeighbors: [] };
+        if (!nodes[toId]) nodes[toId] = { id: toId, lng: to[0], lat: to[1], neighbors: [], reverseNeighbors: [] };
 
+        // 1. Forward Connection (A -> B)
         nodes[fromId].neighbors.push({ node: toId, weight });
-        if (!isOneWay) nodes[toId].neighbors.push({ node: fromId, weight });
+        // This edge "comes from" A, so B sees A as a reverse neighbor
+        nodes[toId].reverseNeighbors.push({ node: fromId, weight });
+
+        // 2. Backward Connection (B -> A) -- Only if NOT One-Way
+        if (!isOneWay) {
+            nodes[toId].neighbors.push({ node: fromId, weight });
+            // This edge "comes from" B, so A sees B as a reverse neighbor
+            nodes[fromId].reverseNeighbors.push({ node: toId, weight });
+        }
       }
     }
   });
