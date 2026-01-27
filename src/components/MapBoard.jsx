@@ -126,7 +126,7 @@ export const MapBoard = forwardRef(({
       sources.forEach(s => { if(!m.getSource(s)) m.addSource(s, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); });
 
       // Init Color
-      const perimeterColor = darkMode ? '#0000FF' : '#FFFF00';
+      const perimeterColor = darkMode ? '#0000FF' : '#ff8400';
 
       // 1. Graph (Roads)
       if(!m.getLayer('graph-layer')) m.addLayer({
