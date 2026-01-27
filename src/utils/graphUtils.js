@@ -19,18 +19,16 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   const height = Math.abs(bounds.north - bounds.south);
   const area = width * height;
 
-  // Strict limit: 0.25 square degrees (approx large city size)
-  if (area > 0.25) {
+  // Strict limit: 0.33 square degrees (approx large city size)
+  if (area > 0.33) {
       return { error: "Area too large! Zoom in before loading." };
   }
 
   // --- 2. DYNAMIC QUERY ---
   let roadFilter = "";
-  let isFastMode = false;
   if (zoom < 15) {
       // Fast Mode: Major roads only
       console.log("Fast Mode: Major roads + Links (Relaxed Connectivity)");
-      isFastMode = true;
       roadFilter = `["highway"~"^(motorway|trunk|primary|secondary|tertiary|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"]`;
   } else {
       // Detail Mode: Everything playable
@@ -49,11 +47,11 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
     out skel qt;
   `;
 
-// 3. Fetch
+  // --- 3. ROBUST FETCH ---
   for (const server of SERVERS) {
       const url = `${server}?data=${encodeURIComponent(query)}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); 
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Max per server
 
       try {
           const response = await fetch(url, { signal: controller.signal });
@@ -61,21 +59,17 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
 
           if (response.ok) {
               const data = await response.json();
-              const geojson = osmtogeojson(data);
-              // Tag the data so we know how to build the graph later
-              geojson.properties = { ...geojson.properties, isFastMode }; 
-              return geojson;
+              return osmtogeojson(data);
           }
       } catch (error) {
-          continue; 
+          // Silent fail, try next server
       }
   }
 
-  return { error: "Servers busy or area too large. Try zooming in." };
+  return { error: "Servers are busy, unable to load roads networks. Try zooming in slightly." };
 };
 
-// FIX: Added 'relaxed' parameter to ignore one-way rules in sparse maps
-export const buildGraphFromGeoJSON = (geojson, obstacles = {}, relaxed = false) => {
+export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
   const nodes = {};
   if (!geojson || !geojson.features) return nodes;
 
@@ -83,9 +77,7 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}, relaxed = false) 
     if (feature.geometry.type === 'LineString') {
       const coords = feature.geometry.coordinates;
       const props = feature.properties || {};
-      
-      // FIX: If 'relaxed' is true (Fast Mode), ignore one-way tags to ensure connectivity
-      const isOneWay = !relaxed && (props.oneway === 'yes' || props.junction === 'roundabout');
+      const isOneWay = props.oneway === 'yes' || props.junction === 'roundabout';
 
       for (let i = 0; i < coords.length - 1; i++) {
         const from = coords[i];
@@ -103,11 +95,7 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}, relaxed = false) 
         if (!nodes[toId]) nodes[toId] = { id: toId, lng: to[0], lat: to[1], neighbors: [] };
 
         nodes[fromId].neighbors.push({ node: toId, weight });
-        
-        // If relaxed (Fast Mode) OR not one-way, add reverse connection
-        if (relaxed || !isOneWay) {
-            nodes[toId].neighbors.push({ node: fromId, weight });
-        }
+        if (!isOneWay) nodes[toId].neighbors.push({ node: fromId, weight });
       }
     }
   });
@@ -121,6 +109,5 @@ export const findNearestNode = (lat, lng, graphNodes) => {
     const d = distance(point([lng, lat]), point([node.lng, node.lat]));
     if (d < minDst) { minDst = d; closest = node; }
   });
-  // Increased snap radius to 1.5km to help with sparse "Fast Mode" maps
   return minDst < 0.5 ? closest : null;
 };
