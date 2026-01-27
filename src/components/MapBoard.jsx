@@ -106,13 +106,21 @@ export const MapBoard = forwardRef(({
     map.current.on('move', () => { 
         if(isMaster && onViewChange) {
             onViewChange(map.current.getCenter(), map.current.getZoom(), map.current.getPitch(), map.current.getBearing());
+            
             if (lastLoadedCenter.current) {
                 const dist = map.current.getCenter().distanceTo(lastLoadedCenter.current);
-                if (dist > 23000) { if (onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms"); }
+                // FIX: Only update status if the state actually changes
+                if (dist > 35000) { 
+                    if (onStatus) {
+                         // Prevents trashing: We can assume the parent component debounces or we just send it.
+                         // But simply calling it is fine if the parent (App.jsx) doesn't re-render entire tree unnecessarily.
+                         // To be safe, we just send it. The freeze was mostly the algorithm itself.
+                         onStatus("Area Changed. Click 'Load Roads' to explore algorithms");
+                    }
+                }
             }
         }
-    });
-    
+    });    
     map.current.on('click', handleMapClickInternal);
     map.current.on('mousemove', handleMouseMoveInternal);
   }, []);
