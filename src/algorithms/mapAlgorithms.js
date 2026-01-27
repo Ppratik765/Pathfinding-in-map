@@ -2,7 +2,6 @@ import distance from '@turf/distance';
 import { point } from '@turf/helpers';
 
 // --- OPTIMIZED MIN HEAP ---
-// Accepts a score function to avoid property lookups during sort
 class MinHeap {
   constructor(scoreFn) {
     this.heap = [];
@@ -28,7 +27,7 @@ class MinHeap {
   bubbleUp() {
     let idx = this.heap.length - 1;
     while (idx > 0) {
-      let parentIdx = (idx - 1) >>> 1; // Bitwise shift for speed
+      let parentIdx = (idx - 1) >>> 1; 
       if (this.scoreFn(this.heap[idx]) < this.scoreFn(this.heap[parentIdx])) {
         [this.heap[idx], this.heap[parentIdx]] = [this.heap[parentIdx], this.heap[idx]];
         idx = parentIdx;
@@ -65,12 +64,9 @@ class MinHeap {
 }
 
 // --- FAST HEURISTIC (Zero Allocation) ---
-// Replaces heavy turf.distance with simple math. 
-// Uses Manhattan distance for speed and admissibility (prevents overestimating).
 const getHeuristicFast = (nodeIdA, nodeIdB, graph) => {
   const nA = graph[nodeIdA];
   const nB = graph[nodeIdB];
-  // Simple coordinate distance approximation (sufficient for heuristic sorting)
   return Math.abs(nA.lng - nB.lng) + Math.abs(nA.lat - nB.lat);
 };
 
@@ -95,18 +91,27 @@ export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
 
   const endTime = performance.now();
   
-  // Calculate stats
-  const totalCost = result.path.reduce((acc, currId, idx) => {
-      if (idx === 0) return 0;
-      const prevId = result.path[idx - 1];
-      const prevNode = graph[prevId];
-      const currNode = graph[currId];
-      if (!prevNode || !currNode) return acc;
-      const edge = prevNode.neighbors.find(n => n.node === currId);
-      if (edge) return acc + edge.weight;
-      return acc + distance(point([prevNode.lng, prevNode.lat]), point([currNode.lng, currNode.lat]), {units: 'kilometers'});
-  }, 0);
+  // FIX: If the algorithm provided a specific totalCost, use it.
+  // Otherwise, calculate it manually (for BFS/DFS/Greedy which don't track weights perfectly during search).
+  let finalCost = result.totalCost;
 
+  if (finalCost === undefined) {
+      finalCost = result.path.reduce((acc, currId, idx) => {
+          if (idx === 0) return 0;
+          const prevId = result.path[idx - 1];
+          const prevNode = graph[prevId];
+          const currNode = graph[currId];
+          if (!prevNode || !currNode) return acc;
+          
+          const edge = prevNode.neighbors.find(n => n.node === currId);
+          if (edge) return acc + edge.weight;
+          
+          // Fallback only if edge data is missing
+          return acc + distance(point([prevNode.lng, prevNode.lat]), point([currNode.lng, currNode.lat]), {units: 'kilometers'});
+      }, 0);
+  }
+
+  // Calculate Explored Distance
   let exploredDist = 0;
   result.visitedOrder.forEach(item => {
       if (item.from) {
@@ -121,7 +126,7 @@ export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
   return { 
       ...result, 
       time: (endTime - startTime).toFixed(1), 
-      cost: totalCost.toFixed(2),
+      cost: parseFloat(finalCost).toFixed(2),
       visitedCount: result.visitedOrder.length,
       exploredDist: exploredDist.toFixed(2)
   };
@@ -132,7 +137,7 @@ export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
 const runDijkstra = (graph, start, end) => {
   const distances = { [start]: 0 };
   const previous = {};
-  const pq = new MinHeap(n => n.dist); // Custom Score Function
+  const pq = new MinHeap(n => n.dist); 
   pq.push({ id: start, dist: 0 });
   
   const visitedOrder = [];
@@ -145,7 +150,11 @@ const runDijkstra = (graph, start, end) => {
     visitedSet.add(curr);
     visitedOrder.push({ id: curr, from: previous[curr] });
 
-    if (curr === end) break;
+    if (curr === end) {
+        // Return exact cost found by Dijkstra
+        return { visitedOrder, path: reconstructPath(previous, end), previous, totalCost: currDist };
+    }
+    
     if (currDist > (distances[curr] ?? Infinity)) continue;
 
     for (const edge of graph[curr].neighbors) {
@@ -166,10 +175,9 @@ const runAStar = (graph, start, end) => {
   const previous = {};
   const visitedOrder = [];
   const visitedSet = new Set();
-  
-  // Use 'f' for heap sorting
   const openSet = new MinHeap(n => n.f); 
-  openSet.push({ id: start, f: 0 }); // Initial f doesn't strictly matter as g=0
+  
+  openSet.push({ id: start, f: 0 });
 
   while (openSet.length) {
     const { id: curr } = openSet.pop();
@@ -178,18 +186,18 @@ const runAStar = (graph, start, end) => {
     visitedSet.add(curr);
     visitedOrder.push({ id: curr, from: previous[curr] });
 
-    if (curr === end) break;
+    if (curr === end) {
+         return { visitedOrder, path: reconstructPath(previous, end), previous, totalCost: gScore[end] };
+    }
 
     for (const edge of graph[curr].neighbors) {
       if (edge.weight === Infinity) continue;
       const neighbor = edge.node;
-      
       const tentativeG = (gScore[curr] ?? Infinity) + edge.weight;
       
       if (tentativeG < (gScore[neighbor] ?? Infinity)) {
         previous[neighbor] = curr;
         gScore[neighbor] = tentativeG;
-        // FAST HEURISTIC CALL
         const fVal = tentativeG + getHeuristicFast(neighbor, end, graph);
         openSet.push({ id: neighbor, f: fVal });
       }
@@ -259,7 +267,7 @@ const runBidirectional = (graph, start, end) => {
                 if (total < bestMeetDist) { bestMeetDist = total; bestMeetNode = curr; }
             }
 
-            // Optimization: Stop this branch if it's already worse than a known path
+            // Pruning: if current path is already longer than best known path, don't expand neighbors
             if (d < bestMeetDist) {
                 for (const edge of graph[curr].neighbors) {
                     if(edge.weight === Infinity) continue;
@@ -305,12 +313,22 @@ const runBidirectional = (graph, start, end) => {
          const topStart = pqStart.length ? pqStart.heap[0].dist : Infinity;
          const topEnd = pqEnd.length ? pqEnd.heap[0].dist : Infinity;
          if (topStart + topEnd >= bestMeetDist) {
-             return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd) };
+             return { 
+                 visitedOrder, 
+                 path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd),
+                 totalCost: bestMeetDist // FIX: Return exact calculated cost
+             };
          }
     }
   }
   
-  if (bestMeetNode) return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd) };
+  if (bestMeetNode) {
+      return { 
+          visitedOrder, 
+          path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd),
+          totalCost: bestMeetDist 
+      };
+  }
   return { visitedOrder, path: [] };
 };
 

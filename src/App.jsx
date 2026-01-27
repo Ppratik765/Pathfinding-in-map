@@ -41,8 +41,19 @@ function App() {
   const handleDataUpdate = (updates) => {
       setSharedData(prev => {
           const next = { ...prev, ...updates };
+          
           if (updates.geojson || updates.obstacles) {
-              next.graph = buildGraphFromGeoJSON(next.geojson || prev.geojson, next.obstacles || prev.obstacles);
+              const geojson = next.geojson || prev.geojson;
+              
+              // Check if we are in Fast Mode (sparse map)
+              const isFastMode = geojson?.properties?.isFastMode || false;
+              
+              // If Fast Mode, build graph in 'Relaxed' mode (ignore one-way)
+              next.graph = buildGraphFromGeoJSON(
+                  geojson, 
+                  next.obstacles || prev.obstacles, 
+                  isFastMode 
+              );
           }
           return next;
       });
