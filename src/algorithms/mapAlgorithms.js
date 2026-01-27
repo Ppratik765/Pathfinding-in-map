@@ -66,6 +66,7 @@ class MinHeap {
 // --- FIX: RAW HAVERSINE HEURISTIC (Kilometers) ---
 // This aligns the units with the graph weights, fixing A* speed.
 // It is pure math (no object creation), so it remains blazing fast.const getHeuristicFast = (nodeIdA, nodeIdB, graph) => {
+const getHeuristicFast = (nodeIdA, nodeIdB, graph) => {
   const nA = graph[nodeIdA];
   const nB = graph[nodeIdB];
   
