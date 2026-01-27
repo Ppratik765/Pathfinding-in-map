@@ -47,14 +47,12 @@ export const MapBoard = forwardRef(({
   const activeToolRef = useRef(activeTool);
   const lastLoadedCenter = useRef(null);
   
-  // FIX: Track BOTH animation frame and timeout ID
   const animationFrameId = useRef(null);
   const animationTimeoutId = useRef(null);
 
   useEffect(() => { sharedDataRef.current = sharedData; }, [sharedData]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
 
-  // --- CRITICAL FIX: STOP EVERYTHING HELPER ---
   const stopEverything = () => {
       if (animationFrameId.current) {
           cancelAnimationFrame(animationFrameId.current);
@@ -66,7 +64,6 @@ export const MapBoard = forwardRef(({
       }
   };
 
-  // Cleanup on unmount (Prevents memory leaks if you delete a map)
   useEffect(() => {
       return () => stopEverything();
   }, []);
@@ -76,13 +73,11 @@ export const MapBoard = forwardRef(({
           if (sharedData.geojson) {
               map.current.getSource('roads').setData(sharedData.geojson);
           } else {
-              // RESET: Clear data & kill processes
               stopEverything();
               map.current.getSource('roads').setData({ type: 'FeatureCollection', features: [] });
               if (map.current.getSource('area-boundary')) {
                   map.current.getSource('area-boundary').setData({ type: 'FeatureCollection', features: [] });
               }
-              // Clear visual artifacts
               if(map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
               if(map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
           }
@@ -93,7 +88,7 @@ export const MapBoard = forwardRef(({
     if (!map.current || !map.current.isStyleLoaded()) return;
     if (map.current.getLayer('area-glow')) {
         map.current.setLayoutProperty('area-glow', 'visibility', showPerimeter ? 'visible' : 'none');
-        const color = darkMode ? '#0000FF' : '#ff7b00';
+        const color = darkMode ? '#0000FF' : '#ff8400';
         map.current.setPaintProperty('area-glow', 'line-color', color);
     }
   }, [showPerimeter, darkMode]);
@@ -233,7 +228,7 @@ export const MapBoard = forwardRef(({
 
           if(onStatus) onStatus(`Graph ready for roads inside green perimeter, ${geojson.features.length} segments`);
       } else {
-          if(onStatus) onStatus("Map in too large to load in. Zoom in closer!");
+          if(onStatus) onStatus("Zoom in closer!");
       }
   };
 
@@ -279,20 +274,18 @@ export const MapBoard = forwardRef(({
   useImperativeHandle(ref, () => ({
     loadRoads: loadRoadsInternal,
     reset: () => { 
-        stopEverything(); // KILL PROCESSES
+        stopEverything(); 
         if (map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
         if (map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
     },
     run: () => {
         if(!sharedData.graph || !sharedData.start || !sharedData.end) return;
         
-        // KILL PREVIOUS RUN & TIMER
         stopEverything();
         
         if (map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
         if (map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
 
-        // Store Timeout ID to be cancelable
         animationTimeoutId.current = setTimeout(() => {
             const result = runAlgorithm(algoType, sharedData.graph, sharedData.start.id, sharedData.end.id);
             const { visitedOrder, path, time, cost, visitedCount, exploredDist } = result;
@@ -301,19 +294,27 @@ export const MapBoard = forwardRef(({
             const totalSteps = visitedOrder.length;
             const stepsPerFrame = 90; 
             const visitedFeatures = [];
+            
+            // FIX: Throttle rendering to prevent browser freeze
+            let lastDrawTime = 0; 
 
-            const animate = () => {
+            const animate = (timestamp) => {
                 if(i >= totalSteps) {
+                    // Final Draw to ensure everything is visible
+                    if (map.current.getSource('visited')) {
+                        map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+                    }
                     if (path.length && map.current.getSource('path')) {
                         const pathCoords = path.map(id => [sharedData.graph[id].lng, sharedData.graph[id].lat]);
                         map.current.getSource('path').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoords } }] });
                     }
                     const finalStats = { time, cost, visited: visitedCount, exploredDist };
-                    setTimeout(() => { if (onResult) onResult(finalStats); }, 500);
-                    animationFrameId.current = null; // Done
+                    setTimeout(() => { if (onResult) onResult(finalStats); }, 200);
+                    animationFrameId.current = null;
                     return;
                 }
                 
+                // Logic: Add data to array every frame...
                 for(let j=0; j<stepsPerFrame && i<totalSteps; j++) {
                     const item = visitedOrder[i];
                     if (item.from) {
@@ -326,15 +327,19 @@ export const MapBoard = forwardRef(({
                     i++;
                 }
                 
-                if (map.current.getSource('visited')) {
-                    map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+                // ... But only update the Map DOM once every 40ms (~25fps)
+                if (timestamp - lastDrawTime > 40) {
+                    if (map.current.getSource('visited')) {
+                        map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+                    }
+                    lastDrawTime = timestamp;
                 }
                 
                 animationFrameId.current = requestAnimationFrame(animate);
             };
             
             animationFrameId.current = requestAnimationFrame(animate);
-        }, 50); // Tiny delay to allow UI to update before freeze
+        }, 50);
     }
   }));
 

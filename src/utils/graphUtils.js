@@ -6,7 +6,8 @@ import { point } from '@turf/helpers';
 const SERVERS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
-    "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://api.openstreetmap.fr/oapi/interpreter"
 ];
 
 export const fetchRoadNetwork = async (bounds, zoom) => {
@@ -39,7 +40,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   }
 
   const query = `
-    [out:json][timeout:10];
+    [out:json][timeout:16];
     (
       way${roadFilter}
       (${bounds.south},${bounds.west},${bounds.north},${bounds.east});
@@ -53,7 +54,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   for (const server of SERVERS) {
       const url = `${server}?data=${encodeURIComponent(query)}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 10s Limit
+      const timeoutId = setTimeout(() => controller.abort(), 16000); // 10s Limit
 
       try {
           const response = await fetch(url, { signal: controller.signal });
