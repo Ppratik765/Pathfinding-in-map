@@ -40,7 +40,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   }
 
   const query = `
-    [out:json][timeout:16];
+    [out:json][timeout:15];
     (
       way${roadFilter}
       (${bounds.south},${bounds.west},${bounds.north},${bounds.east});
@@ -54,7 +54,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   for (const server of SERVERS) {
       const url = `${server}?data=${encodeURIComponent(query)}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 16000); // 10s Limit
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 10s Limit
 
       try {
           const response = await fetch(url, { signal: controller.signal });

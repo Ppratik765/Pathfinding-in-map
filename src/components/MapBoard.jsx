@@ -46,48 +46,33 @@ export const MapBoard = forwardRef(({
   const sharedDataRef = useRef(sharedData);
   const activeToolRef = useRef(activeTool);
   const lastLoadedCenter = useRef(null);
-  
-  const animationFrameId = useRef(null);
-  const animationTimeoutId = useRef(null);
-
-  useEffect(() => { sharedDataRef.current = sharedData; }, [sharedData]);
-  useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
-
-  const stopEverything = () => {
-      if (animationFrameId.current) {
-          cancelAnimationFrame(animationFrameId.current);
-          animationFrameId.current = null;
-      }
-      if (animationTimeoutId.current) {
-          clearTimeout(animationTimeoutId.current);
-          animationTimeoutId.current = null;
-      }
-  };
-
-  useEffect(() => {
-      return () => stopEverything();
-  }, []);
 
   useEffect(() => { 
       if (map.current && map.current.getSource('roads')) {
           if (sharedData.geojson) {
               map.current.getSource('roads').setData(sharedData.geojson);
+              // Draw Box if data exists
+              // ... existing box drawing logic ...
           } else {
-              stopEverything();
+              // RESET: Clear data
               map.current.getSource('roads').setData({ type: 'FeatureCollection', features: [] });
               if (map.current.getSource('area-boundary')) {
                   map.current.getSource('area-boundary').setData({ type: 'FeatureCollection', features: [] });
               }
-              if(map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
-              if(map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
           }
       }
   }, [sharedData.geojson]);
 
+  useEffect(() => { sharedDataRef.current = sharedData; }, [sharedData]);
+  useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
+
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
+    
+    // Toggle
     if (map.current.getLayer('area-glow')) {
         map.current.setLayoutProperty('area-glow', 'visibility', showPerimeter ? 'visible' : 'none');
+        // Color Math: Invert Blue -> Yellow
         const color = darkMode ? '#0000FF' : '#ff8400';
         map.current.setPaintProperty('area-glow', 'line-color', color);
     }
@@ -123,7 +108,7 @@ export const MapBoard = forwardRef(({
             onViewChange(map.current.getCenter(), map.current.getZoom(), map.current.getPitch(), map.current.getBearing());
             if (lastLoadedCenter.current) {
                 const dist = map.current.getCenter().distanceTo(lastLoadedCenter.current);
-                if (dist > 25000 && onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms");
+                if (dist > 25000) { if (onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms"); }
             }
         }
     });
@@ -137,18 +122,20 @@ export const MapBoard = forwardRef(({
   const setupLayers = () => {
       const m = map.current;
       if(!m) return;
-
       const sources = ['visited', 'path', 'roads', 'graph-network', 'area-boundary', 'obstacles'];
       sources.forEach(s => { if(!m.getSource(s)) m.addSource(s, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); });
 
+      // Init Color
       const perimeterColor = darkMode ? '#0000FF' : '#FFFF00';
 
+      // 1. Graph (Roads)
       if(!m.getLayer('graph-layer')) m.addLayer({
           id: 'graph-layer', type: 'line', source: 'roads',
           layout: { 'line-cap': 'round' },
           paint: { 'line-color': darkMode ? '#ffffff' : '#000000', 'line-width': 2, 'line-opacity': 0.1 }
       });
 
+      // 2. Perimeter (On top of roads)
       if(!m.getLayer('area-glow')) m.addLayer({
           id: 'area-glow', type: 'line', source: 'area-boundary',
           layout: { 
@@ -228,7 +215,7 @@ export const MapBoard = forwardRef(({
 
           if(onStatus) onStatus(`Graph ready for roads inside green perimeter, ${geojson.features.length} segments`);
       } else {
-          if(onStatus) onStatus("Zoom in closer!");
+          if(onStatus) onStatus("Map is too large to load in. Zoom in closer!");
       }
   };
 
@@ -274,72 +261,47 @@ export const MapBoard = forwardRef(({
   useImperativeHandle(ref, () => ({
     loadRoads: loadRoadsInternal,
     reset: () => { 
-        stopEverything(); 
-        if (map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
-        if (map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
+        map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
+        map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
     },
     run: () => {
         if(!sharedData.graph || !sharedData.start || !sharedData.end) return;
         
-        stopEverything();
+        map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
+        map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
+
+        const result = runAlgorithm(algoType, sharedData.graph, sharedData.start.id, sharedData.end.id);
+        const { visitedOrder, path, time, cost, visitedCount, exploredDist } = result;
         
-        if (map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
-        if (map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
+        let i = 0;
+        const totalSteps = visitedOrder.length;
+        const stepsPerFrame = 90;
+        const visitedFeatures = [];
 
-        animationTimeoutId.current = setTimeout(() => {
-            const result = runAlgorithm(algoType, sharedData.graph, sharedData.start.id, sharedData.end.id);
-            const { visitedOrder, path, time, cost, visitedCount, exploredDist } = result;
-            
-            let i = 0;
-            const totalSteps = visitedOrder.length;
-            const stepsPerFrame = 90; 
-            const visitedFeatures = [];
-            
-            // FIX: Throttle rendering to prevent browser freeze
-            let lastDrawTime = 0; 
-
-            const animate = (timestamp) => {
-                if(i >= totalSteps) {
-                    // Final Draw to ensure everything is visible
-                    if (map.current.getSource('visited')) {
-                        map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
-                    }
-                    if (path.length && map.current.getSource('path')) {
-                        const pathCoords = path.map(id => [sharedData.graph[id].lng, sharedData.graph[id].lat]);
-                        map.current.getSource('path').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoords } }] });
-                    }
-                    const finalStats = { time, cost, visited: visitedCount, exploredDist };
-                    setTimeout(() => { if (onResult) onResult(finalStats); }, 200);
-                    animationFrameId.current = null;
-                    return;
+        const animate = () => {
+            if(i >= totalSteps) {
+                if (path.length) {
+                    const pathCoords = path.map(id => [sharedData.graph[id].lng, sharedData.graph[id].lat]);
+                    map.current.getSource('path').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoords } }] });
                 }
-                
-                // Logic: Add data to array every frame...
-                for(let j=0; j<stepsPerFrame && i<totalSteps; j++) {
-                    const item = visitedOrder[i];
-                    if (item.from) {
-                        const fromNode = sharedData.graph[item.from];
-                        const toNode = sharedData.graph[item.id];
-                        if(fromNode && toNode) {
-                            visitedFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]] } });
-                        }
-                    }
-                    i++;
-                }
-                
-                // ... But only update the Map DOM once every 40ms (~25fps)
-                if (timestamp - lastDrawTime > 40) {
-                    if (map.current.getSource('visited')) {
-                        map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
-                    }
-                    lastDrawTime = timestamp;
-                }
-                
-                animationFrameId.current = requestAnimationFrame(animate);
-            };
+                const finalStats = { time, cost, visited: visitedCount, exploredDist };
+                setTimeout(() => { if (onResult) onResult(finalStats); }, 900);
+                return;
+            }
             
-            animationFrameId.current = requestAnimationFrame(animate);
-        }, 50);
+            for(let j=0; j<stepsPerFrame && i<totalSteps; j++) {
+                const item = visitedOrder[i];
+                if (item.from) {
+                    const fromNode = sharedData.graph[item.from];
+                    const toNode = sharedData.graph[item.id];
+                    visitedFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]] } });
+                }
+                i++;
+            }
+            map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+            requestAnimationFrame(animate);
+        };
+        animate();
     }
   }));
 
@@ -347,6 +309,7 @@ export const MapBoard = forwardRef(({
                     : winStatus === 'loser' ? 'border-red-500 opacity-90'
                     : 'border-white dark:border-gray-700';
 
+  // --- DARK MODE FILTER APPLIED DIRECTLY ---
   const filterStyle = darkMode ? 'invert(1) hue-rotate(180deg) brightness(1.1) contrast(0.9)' : 'none';
 
   return (
