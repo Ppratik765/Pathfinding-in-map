@@ -2,45 +2,40 @@ import osmtogeojson from 'osmtogeojson';
 import distance from '@turf/distance';
 import { point } from '@turf/helpers';
 
-// Server rotation prevents "Connection Failed" if one is busy
+// Server rotation
 const SERVERS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
-    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-    "https://api.openstreetmap.fr/oapi/interpreter"
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
 ];
 
 export const fetchRoadNetwork = async (bounds, zoom) => {
-  // 1. Zoom Check
-  if (zoom < 12) {
-      return { error: "Map is too big, zoom in closer!." };
+  // --- 1. INSTANT PRE-CHECKS (No waiting) ---
+  if (zoom < 11) {
+      return { error: "Zoom in closer (Level 11+)." };
   }
 
-  // 2. Area Check
   const width = Math.abs(bounds.east - bounds.west);
   const height = Math.abs(bounds.north - bounds.south);
   const area = width * height;
 
-  if (area > 0.33) {
-      return { error: "Area too massive! Zoom in slightly." };
+  // Strict limit: 0.25 square degrees (approx large city size)
+  if (area > 0.25) {
+      return { error: "Area too large! Zoom in before loading." };
   }
 
-  // --- 3. DYNAMIC OPTIMIZATION (The Speed Fix) ---
+  // --- 2. DYNAMIC QUERY ---
   let roadFilter = "";
-  
-  if (zoom < 15) {
-      // FAST MODE (Zoom 9-14): Only load major arteries. 
-      // Ignores thousands of small residential streets.
-      console.log("🚀 Fast Mode: Major roads + Links");
+  if (zoom < 14) {
+      // Fast Mode: Major roads only
       roadFilter = `["highway"~"^(motorway|trunk|primary|secondary|tertiary|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"]`;
   } else {
-      // DETAIL MODE (Zoom 13+): Load everything playable.
-      console.log("🔍 Detail Mode: All streets");
-      roadFilter = `["highway"]["highway"!~"footway|cycleway|path|service|track|pedestrian"]`;
+      // Detail Mode: Everything playable
+      roadFilter = `["highway"]["highway"!~"footway|cycleway|path|service|track|steps|pedestrian|construction"]`;
   }
 
   const query = `
-    [out:json][timeout:15];
+    [out:json][timeout:16];
     (
       way${roadFilter}
       (${bounds.south},${bounds.west},${bounds.north},${bounds.east});
@@ -50,11 +45,11 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
     out skel qt;
   `;
 
-  // 4. Robust Fetch
+  // --- 3. ROBUST FETCH ---
   for (const server of SERVERS) {
       const url = `${server}?data=${encodeURIComponent(query)}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000); // 10s Limit
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Max per server
 
       try {
           const response = await fetch(url, { signal: controller.signal });
@@ -63,17 +58,13 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
           if (response.ok) {
               const data = await response.json();
               return osmtogeojson(data);
-          } else {
-              // Try next server on error
-              continue; 
           }
       } catch (error) {
-          // Try next server on timeout
-          continue; 
+          // Silent fail, try next server
       }
   }
 
-  return { error: "Servers busy. Try zooming in or wait 10s." };
+  return { error: "Servers are busy, unable to load roads networks. Try zooming in slightly." };
 };
 
 export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
@@ -84,9 +75,6 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
     if (feature.geometry.type === 'LineString') {
       const coords = feature.geometry.coordinates;
       const props = feature.properties || {};
-      
-      // --- FIX: ONE-WAY LOGIC ---
-      // Check if road is explicitly one-way OR is a roundabout
       const isOneWay = props.oneway === 'yes' || props.junction === 'roundabout';
 
       for (let i = 0; i < coords.length - 1; i++) {
@@ -104,13 +92,8 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
         if (!nodes[fromId]) nodes[fromId] = { id: fromId, lng: from[0], lat: from[1], neighbors: [] };
         if (!nodes[toId]) nodes[toId] = { id: toId, lng: to[0], lat: to[1], neighbors: [] };
 
-        // Always add Forward direction (From -> To)
         nodes[fromId].neighbors.push({ node: toId, weight });
-
-        // Only add Backward direction (To -> From) if NOT one-way
-        if (!isOneWay) {
-            nodes[toId].neighbors.push({ node: fromId, weight });
-        }
+        if (!isOneWay) nodes[toId].neighbors.push({ node: fromId, weight });
       }
     }
   });

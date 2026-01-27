@@ -15,7 +15,6 @@ const createMarkerElement = (type) => {
     el.className = 'custom-marker';
     el.style.transform = 'translate(-50%, -100%)'; 
     el.style.filter = 'drop-shadow(0px 4px 6px rgba(0,0,0,0.5))';
-    
     const pinColor = type === 'start' ? '#22c55e' : (type === 'end' ? '#ef4444' : '#fff');
     let icon = null;
     if (type === 'start') icon = <Home fill="white" size={16} />;
@@ -24,11 +23,7 @@ const createMarkerElement = (type) => {
     else if (type === 'traffic') icon = <TrafficCone fill="orange" size={20} />;
 
     if (type === 'start' || type === 'end') {
-        const svg = `
-        <svg width="34" height="42" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 0C5.37258 0 0 5.37258 0 12C0 20 12 30 12 30C12 30 24 20 24 12C24 5.37258 18.6274 0 12 0Z" fill="${pinColor}"/>
-            <circle cx="12" cy="12" r="8" fill="rgba(0,0,0,0.1)"/>
-        </svg>`;
+        const svg = `<svg width="34" height="42" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.37258 0 0 5.37258 0 12C0 20 12 30 12 30C12 30 24 20 24 12C24 5.37258 18.6274 0 12 0Z" fill="${pinColor}"/><circle cx="12" cy="12" r="8" fill="rgba(0,0,0,0.1)"/></svg>`;
         el.innerHTML = `<div style="position: relative; width: 34px; height: 42px;">${svg}<div style="position: absolute; top: 8px; left: 9px; color: white;">${renderToString(icon)}</div></div>`;
     } else {
         el.innerHTML = renderToString(icon);
@@ -46,38 +41,56 @@ export const MapBoard = forwardRef(({
   const sharedDataRef = useRef(sharedData);
   const activeToolRef = useRef(activeTool);
   const lastLoadedCenter = useRef(null);
-
-  useEffect(() => { 
-      if (map.current && map.current.getSource('roads')) {
-          if (sharedData.geojson) {
-              map.current.getSource('roads').setData(sharedData.geojson);
-              // Draw Box if data exists
-              // ... existing box drawing logic ...
-          } else {
-              // RESET: Clear data
-              map.current.getSource('roads').setData({ type: 'FeatureCollection', features: [] });
-              if (map.current.getSource('area-boundary')) {
-                  map.current.getSource('area-boundary').setData({ type: 'FeatureCollection', features: [] });
-              }
-          }
-      }
-  }, [sharedData.geojson]);
+  
+  // Animation Control
+  const animationFrameId = useRef(null);
+  const animationTimeoutId = useRef(null);
 
   useEffect(() => { sharedDataRef.current = sharedData; }, [sharedData]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
 
+  // --- CLEANUP HELPER ---
+  const stopEverything = () => {
+      if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+          animationFrameId.current = null;
+      }
+      if (animationTimeoutId.current) {
+          clearTimeout(animationTimeoutId.current);
+          animationTimeoutId.current = null;
+      }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => { return () => stopEverything(); }, []);
+
+  // Update Map Data safely
+  useEffect(() => { 
+      if (map.current && map.current.getSource('roads')) {
+          if (sharedData.geojson) {
+              map.current.getSource('roads').setData(sharedData.geojson);
+          } else {
+              // RESET Logic
+              stopEverything();
+              const empty = { type: 'FeatureCollection', features: [] };
+              if (map.current.getSource('roads')) map.current.getSource('roads').setData(empty);
+              if (map.current.getSource('area-boundary')) map.current.getSource('area-boundary').setData(empty);
+              if (map.current.getSource('visited')) map.current.getSource('visited').setData(empty);
+              if (map.current.getSource('path')) map.current.getSource('path').setData(empty);
+          }
+      }
+  }, [sharedData.geojson]);
+
+  // Update Visuals (Perimeter/Colors)
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
-    
-    // Toggle
     if (map.current.getLayer('area-glow')) {
         map.current.setLayoutProperty('area-glow', 'visibility', showPerimeter ? 'visible' : 'none');
-        // Color Math: Invert Blue -> Yellow
-        const color = darkMode ? '#0000FF' : '#ff8400';
-        map.current.setPaintProperty('area-glow', 'line-color', color);
+        map.current.setPaintProperty('area-glow', 'line-color', darkMode ? '#0000FF' : '#ff8400');
     }
   }, [showPerimeter, darkMode]);
 
+  // --- INITIALIZE MAP ---
   useEffect(() => {
     if (map.current) return;
 
@@ -103,53 +116,58 @@ export const MapBoard = forwardRef(({
 
     map.current.on('load', async () => { setupLayers(); setup3DBuildings(); if (isMaster && !sharedData.graph) await loadRoadsInternal(); });
     
-    map.current.on('move', () => { 
+    // --- EVENT LISTENERS (With Cleanup) ---
+    const onMove = () => { 
         if(isMaster && onViewChange) {
             onViewChange(map.current.getCenter(), map.current.getZoom(), map.current.getPitch(), map.current.getBearing());
             if (lastLoadedCenter.current) {
                 const dist = map.current.getCenter().distanceTo(lastLoadedCenter.current);
-                if (dist > 25000) { if (onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms"); }
+                // Simple debounce check: only update string if needed
+                if (dist > 25000 && onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms");
             }
         }
-    });
+    };
     
+    map.current.on('move', onMove);
     map.current.on('click', handleMapClickInternal);
     map.current.on('mousemove', handleMouseMoveInternal);
+
+    // Cleanup listeners when component unmounts
+    return () => {
+        if (map.current) {
+            map.current.off('move', onMove);
+            map.current.off('click', handleMapClickInternal);
+            map.current.off('mousemove', handleMouseMoveInternal);
+        }
+    };
   }, []);
 
-  useEffect(() => { if(!map.current || isMaster) return; map.current.jumpTo({ center: sharedViewState.center, zoom: sharedViewState.zoom, pitch: sharedViewState.pitch, bearing: sharedViewState.bearing }); }, [sharedViewState]);
+  // Sync View
+  useEffect(() => { 
+      if(!map.current || isMaster) return; 
+      map.current.jumpTo({ center: sharedViewState.center, zoom: sharedViewState.zoom, pitch: sharedViewState.pitch, bearing: sharedViewState.bearing }); 
+  }, [sharedViewState]);
 
   const setupLayers = () => {
       const m = map.current;
       if(!m) return;
+
+      // Ensure all sources exist
       const sources = ['visited', 'path', 'roads', 'graph-network', 'area-boundary', 'obstacles'];
       sources.forEach(s => { if(!m.getSource(s)) m.addSource(s, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); });
 
-      // Init Color
       const perimeterColor = darkMode ? '#0000FF' : '#ff8400';
 
-      // 1. Graph (Roads)
       if(!m.getLayer('graph-layer')) m.addLayer({
           id: 'graph-layer', type: 'line', source: 'roads',
           layout: { 'line-cap': 'round' },
           paint: { 'line-color': darkMode ? '#ffffff' : '#000000', 'line-width': 2, 'line-opacity': 0.1 }
       });
 
-      // 2. Perimeter (On top of roads)
       if(!m.getLayer('area-glow')) m.addLayer({
           id: 'area-glow', type: 'line', source: 'area-boundary',
-          layout: { 
-              'line-join': 'round', 
-              'line-cap': 'round',
-              'visibility': showPerimeter ? 'visible' : 'none'
-          },
-          paint: { 
-              'line-color': perimeterColor,
-              'line-width': 6,
-              'line-blur': 4,
-              'line-opacity': 1,
-              'line-dasharray': [2, 1] 
-          }
+          layout: { 'line-join': 'round', 'line-cap': 'round', 'visibility': showPerimeter ? 'visible' : 'none' },
+          paint: { 'line-color': perimeterColor, 'line-width': 6, 'line-blur': 4, 'line-opacity': 1, 'line-dasharray': [2, 1] }
       });
 
       if(!m.getLayer('visited-layer')) m.addLayer({ 
@@ -215,7 +233,7 @@ export const MapBoard = forwardRef(({
 
           if(onStatus) onStatus(`Graph ready for roads inside green perimeter, ${geojson.features.length} segments`);
       } else {
-          if(onStatus) onStatus("Map is too large to load in. Zoom in closer!");
+          if(onStatus) onStatus("Map to too large to load in. Zoom in closer!");
       }
   };
 
@@ -261,47 +279,73 @@ export const MapBoard = forwardRef(({
   useImperativeHandle(ref, () => ({
     loadRoads: loadRoadsInternal,
     reset: () => { 
-        map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
-        map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
+        stopEverything(); 
+        if (map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
+        if (map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
     },
     run: () => {
         if(!sharedData.graph || !sharedData.start || !sharedData.end) return;
         
-        map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
-        map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
-
-        const result = runAlgorithm(algoType, sharedData.graph, sharedData.start.id, sharedData.end.id);
-        const { visitedOrder, path, time, cost, visitedCount, exploredDist } = result;
+        stopEverything();
         
-        let i = 0;
-        const totalSteps = visitedOrder.length;
-        const stepsPerFrame = 90;
-        const visitedFeatures = [];
+        // Instant visual clear
+        if (map.current.getSource('visited')) map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
+        if (map.current.getSource('path')) map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
 
-        const animate = () => {
-            if(i >= totalSteps) {
-                if (path.length) {
-                    const pathCoords = path.map(id => [sharedData.graph[id].lng, sharedData.graph[id].lat]);
-                    map.current.getSource('path').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoords } }] });
-                }
-                const finalStats = { time, cost, visited: visitedCount, exploredDist };
-                setTimeout(() => { if (onResult) onResult(finalStats); }, 900);
-                return;
-            }
+        // Delay algorithm slightly to let UI settle
+        animationTimeoutId.current = setTimeout(() => {
+            const result = runAlgorithm(algoType, sharedData.graph, sharedData.start.id, sharedData.end.id);
+            const { visitedOrder, path, time, cost, visitedCount, exploredDist } = result;
             
-            for(let j=0; j<stepsPerFrame && i<totalSteps; j++) {
-                const item = visitedOrder[i];
-                if (item.from) {
-                    const fromNode = sharedData.graph[item.from];
-                    const toNode = sharedData.graph[item.id];
-                    visitedFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]] } });
+            let i = 0;
+            const totalSteps = visitedOrder.length;
+            const stepsPerFrame = 90; 
+            const visitedFeatures = [];
+            
+            // --- THROTTLE LOGIC ---
+            let lastDrawTime = 0; 
+
+            const animate = (timestamp) => {
+                if(i >= totalSteps) {
+                    if (map.current.getSource('visited')) {
+                        map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+                    }
+                    if (path.length && map.current.getSource('path')) {
+                        const pathCoords = path.map(id => [sharedData.graph[id].lng, sharedData.graph[id].lat]);
+                        map.current.getSource('path').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoords } }] });
+                    }
+                    const finalStats = { time, cost, visited: visitedCount, exploredDist };
+                    setTimeout(() => { if (onResult) onResult(finalStats); }, 200);
+                    animationFrameId.current = null;
+                    return;
                 }
-                i++;
-            }
-            map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
-            requestAnimationFrame(animate);
-        };
-        animate();
+                
+                // Process Data (Fast)
+                for(let j=0; j<stepsPerFrame && i<totalSteps; j++) {
+                    const item = visitedOrder[i];
+                    if (item.from) {
+                        const fromNode = sharedData.graph[item.from];
+                        const toNode = sharedData.graph[item.id];
+                        if(fromNode && toNode) {
+                            visitedFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]] } });
+                        }
+                    }
+                    i++;
+                }
+                
+                // Render to DOM (Slow) -> Throttled to 40ms (~25 FPS)
+                if (timestamp - lastDrawTime > 35) {
+                    if (map.current.getSource('visited')) {
+                        map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+                    }
+                    lastDrawTime = timestamp;
+                }
+                
+                animationFrameId.current = requestAnimationFrame(animate);
+            };
+            
+            animationFrameId.current = requestAnimationFrame(animate);
+        }, 50);
     }
   }));
 
@@ -309,7 +353,6 @@ export const MapBoard = forwardRef(({
                     : winStatus === 'loser' ? 'border-red-500 opacity-90'
                     : 'border-white dark:border-gray-700';
 
-  // --- DARK MODE FILTER APPLIED DIRECTLY ---
   const filterStyle = darkMode ? 'invert(1) hue-rotate(180deg) brightness(1.1) contrast(0.9)' : 'none';
 
   return (
