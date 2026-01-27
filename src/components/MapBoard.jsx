@@ -46,18 +46,29 @@ export const MapBoard = forwardRef(({
   const sharedDataRef = useRef(sharedData);
   const activeToolRef = useRef(activeTool);
   const lastLoadedCenter = useRef(null);
+  
+  // FIX: Track the animation frame ID to cancel it later
+  const currentAnimationId = useRef(null);
 
   useEffect(() => { sharedDataRef.current = sharedData; }, [sharedData]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
+
+  // FIX: Helper to kill any running loop
+  const cancelAnimation = () => {
+      if (currentAnimationId.current) {
+          cancelAnimationFrame(currentAnimationId.current);
+          currentAnimationId.current = null;
+      }
+  };
 
   useEffect(() => { 
       if (map.current && map.current.getSource('roads')) {
           if (sharedData.geojson) {
               map.current.getSource('roads').setData(sharedData.geojson);
-              // Draw Box if data exists
-              // ... existing box drawing logic ...
+              // Note: Only redraw box if bounds logic exists here or parent handles it
           } else {
-              // RESET: Clear data
+              // RESET: Clear data & kill animation
+              cancelAnimation();
               map.current.getSource('roads').setData({ type: 'FeatureCollection', features: [] });
               if (map.current.getSource('area-boundary')) {
                   map.current.getSource('area-boundary').setData({ type: 'FeatureCollection', features: [] });
@@ -69,10 +80,8 @@ export const MapBoard = forwardRef(({
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
     
-    // Toggle
     if (map.current.getLayer('area-glow')) {
         map.current.setLayoutProperty('area-glow', 'visibility', showPerimeter ? 'visible' : 'none');
-        // Color Math: Invert Blue -> Yellow
         const color = darkMode ? '#0000FF' : '#FFFF00';
         map.current.setPaintProperty('area-glow', 'line-color', color);
     }
@@ -106,21 +115,13 @@ export const MapBoard = forwardRef(({
     map.current.on('move', () => { 
         if(isMaster && onViewChange) {
             onViewChange(map.current.getCenter(), map.current.getZoom(), map.current.getPitch(), map.current.getBearing());
-            
             if (lastLoadedCenter.current) {
                 const dist = map.current.getCenter().distanceTo(lastLoadedCenter.current);
-                // FIX: Only update status if the state actually changes
-                if (dist > 35000) { 
-                    if (onStatus) {
-                         // Prevents trashing: We can assume the parent component debounces or we just send it.
-                         // But simply calling it is fine if the parent (App.jsx) doesn't re-render entire tree unnecessarily.
-                         // To be safe, we just send it. The freeze was mostly the algorithm itself.
-                         onStatus("Area Changed. Click 'Load Roads' to explore algorithms");
-                    }
-                }
+                if (dist > 25000) { if (onStatus) onStatus("Area Changed. Click 'Load Roads' to explore algorithms"); }
             }
         }
-    });    
+    });
+    
     map.current.on('click', handleMapClickInternal);
     map.current.on('mousemove', handleMouseMoveInternal);
   }, []);
@@ -130,20 +131,18 @@ export const MapBoard = forwardRef(({
   const setupLayers = () => {
       const m = map.current;
       if(!m) return;
+
       const sources = ['visited', 'path', 'roads', 'graph-network', 'area-boundary', 'obstacles'];
       sources.forEach(s => { if(!m.getSource(s)) m.addSource(s, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); });
 
-      // Init Color
-      const perimeterColor = darkMode ? '#0000FF' : '#FFFF00';
+      const perimeterColor = darkMode ? '#0000FF' : '#ff9900';
 
-      // 1. Graph (Roads)
       if(!m.getLayer('graph-layer')) m.addLayer({
           id: 'graph-layer', type: 'line', source: 'roads',
           layout: { 'line-cap': 'round' },
           paint: { 'line-color': darkMode ? '#ffffff' : '#000000', 'line-width': 2, 'line-opacity': 0.1 }
       });
 
-      // 2. Perimeter (On top of roads)
       if(!m.getLayer('area-glow')) m.addLayer({
           id: 'area-glow', type: 'line', source: 'area-boundary',
           layout: { 
@@ -153,10 +152,10 @@ export const MapBoard = forwardRef(({
           },
           paint: { 
               'line-color': perimeterColor,
-              'line-width': 4,
-              'line-blur': 2,
+              'line-width': 6,
+              'line-blur': 4,
               'line-opacity': 1,
-              'line-dasharray': [2, 2] 
+              'line-dasharray': [2, 1] 
           }
       });
 
@@ -223,7 +222,7 @@ export const MapBoard = forwardRef(({
 
           if(onStatus) onStatus(`Graph ready for roads inside perimeter, ${geojson.features.length} segments`);
       } else {
-          if(onStatus) onStatus("Zoom in closer!");
+          if(onStatus) onStatus("Map is too large to load in. Zoom in closer!");
       }
   };
 
@@ -269,47 +268,63 @@ export const MapBoard = forwardRef(({
   useImperativeHandle(ref, () => ({
     loadRoads: loadRoadsInternal,
     reset: () => { 
+        cancelAnimation(); // FIX: Kill loop
         map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
         map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
     },
     run: () => {
         if(!sharedData.graph || !sharedData.start || !sharedData.end) return;
         
+        // FIX: Start fresh. Kill previous loop.
+        cancelAnimation();
+        
         map.current.getSource('visited').setData({type:'FeatureCollection', features:[]});
         map.current.getSource('path').setData({type:'FeatureCollection', features:[]});
 
-        const result = runAlgorithm(algoType, sharedData.graph, sharedData.start.id, sharedData.end.id);
-        const { visitedOrder, path, time, cost, visitedCount, exploredDist } = result;
-        
-        let i = 0;
-        const totalSteps = visitedOrder.length;
-        const stepsPerFrame = 90;
-        const visitedFeatures = [];
-
-        const animate = () => {
-            if(i >= totalSteps) {
-                if (path.length) {
-                    const pathCoords = path.map(id => [sharedData.graph[id].lng, sharedData.graph[id].lat]);
-                    map.current.getSource('path').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoords } }] });
-                }
-                const finalStats = { time, cost, visited: visitedCount, exploredDist };
-                setTimeout(() => { if (onResult) onResult(finalStats); }, 900);
-                return;
-            }
+        // Add a tiny delay to ensure React state/map sources settle before heavy calc
+        setTimeout(() => {
+            const result = runAlgorithm(algoType, sharedData.graph, sharedData.start.id, sharedData.end.id);
+            const { visitedOrder, path, time, cost, visitedCount, exploredDist } = result;
             
-            for(let j=0; j<stepsPerFrame && i<totalSteps; j++) {
-                const item = visitedOrder[i];
-                if (item.from) {
-                    const fromNode = sharedData.graph[item.from];
-                    const toNode = sharedData.graph[item.id];
-                    visitedFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]] } });
+            let i = 0;
+            const totalSteps = visitedOrder.length;
+            const stepsPerFrame = 90; // Adjust for speed
+            const visitedFeatures = [];
+
+            const animate = () => {
+                if(i >= totalSteps) {
+                    if (path.length) {
+                        const pathCoords = path.map(id => [sharedData.graph[id].lng, sharedData.graph[id].lat]);
+                        map.current.getSource('path').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pathCoords } }] });
+                    }
+                    const finalStats = { time, cost, visited: visitedCount, exploredDist };
+                    setTimeout(() => { if (onResult) onResult(finalStats); }, 500);
+                    currentAnimationId.current = null; // Done
+                    return;
                 }
-                i++;
-            }
-            map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
-            requestAnimationFrame(animate);
-        };
-        animate();
+                
+                for(let j=0; j<stepsPerFrame && i<totalSteps; j++) {
+                    const item = visitedOrder[i];
+                    if (item.from) {
+                        const fromNode = sharedData.graph[item.from];
+                        const toNode = sharedData.graph[item.id];
+                        // Only add valid lines
+                        if(fromNode && toNode) {
+                            visitedFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]] } });
+                        }
+                    }
+                    i++;
+                }
+                
+                // Batch update
+                map.current.getSource('visited').setData({ type: 'FeatureCollection', features: visitedFeatures });
+                
+                currentAnimationId.current = requestAnimationFrame(animate);
+            };
+            
+            // Start the loop
+            currentAnimationId.current = requestAnimationFrame(animate);
+        }, 10);
     }
   }));
 
@@ -317,7 +332,6 @@ export const MapBoard = forwardRef(({
                     : winStatus === 'loser' ? 'border-red-500 opacity-90'
                     : 'border-white dark:border-gray-700';
 
-  // --- DARK MODE FILTER APPLIED DIRECTLY ---
   const filterStyle = darkMode ? 'invert(1) hue-rotate(180deg) brightness(1.1) contrast(0.9)' : 'none';
 
   return (
