@@ -100,15 +100,15 @@ function App() {
             <Info size={20} />
         </button>
         {/* FIX: Width reduced to 250px (Desktop) & 85vw (Mobile). Left aligned on mobile. */}
-        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[85vw] sm:w-[250px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
+        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[65vw] sm:w-[230px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
             <h3 className="font-bold text-sm mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
             <ol className="list-decimal pl-4 space-y-1.5 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
-                <li><span className="font-bold text-blue-500">Zoom In</span> (Level 11+).</li>
+                <li><span className="font-bold text-blue-500">Zoom</span> to your desired level.</li>
                 <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span>.</li>
                 <li>Select <span className="font-bold text-green-600">Start</span> tool & click road.</li>
                 <li>Select <span className="font-bold text-red-600">End</span> tool & click road.</li>
-                <li>(Opt) Add <span className="font-bold">Walls</span>/<span className="font-bold text-orange-500">Traffic</span>.</li>
+                <li>(Optional) Add <span className="font-bold">Walls</span>/<span className="font-bold text-orange-500">Traffic</span>.</li>
                 <li>Click <span className="font-bold bg-green-100 dark:bg-green-900/30 px-1 rounded text-green-600 dark:text-green-400">RUN</span>!</li>
             </ol>
         </div>
@@ -290,11 +290,11 @@ function App() {
                     {/* MOBILE STATS FOOTER */}
                     <div className={`flex md:hidden justify-end transition-all duration-500 ${results[index] ? 'opacity-100 max-h-10' : 'opacity-0 max-h-0'}`}>
                         <div className="bg-white/90 dark:bg-gray-900/90 px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-3 text-[10px] font-mono">
-                             <div className="flex gap-1"><span className="opacity-50">D:</span><span className="font-bold text-orange-500">{results[index]?.cost}km</span></div>
+                             <div className="flex gap-1"><span className="opacity-50">Dist:</span><span className="font-bold text-orange-500">{results[index]?.cost}km</span></div>
                              <div className="w-px h-3 bg-gray-400"></div>
-                             <div className="flex gap-1"><span className="opacity-50">T:</span><span className="font-bold">{results[index]?.time}ms</span></div>
+                             <div className="flex gap-1"><span className="opacity-50">Time:</span><span className="font-bold">{results[index]?.time}ms</span></div>
                              <div className="w-px h-3 bg-gray-400"></div>
-                             <div className="flex gap-1"><span className="opacity-50">E:</span><span className="font-bold text-blue-500">{results[index]?.exploredDist}km</span></div>
+                             <div className="flex gap-1"><span className="opacity-50">Exp:</span><span className="font-bold text-blue-500">{results[index]?.exploredDist}km</span></div>
                         </div>
                     </div>
                 </div>
