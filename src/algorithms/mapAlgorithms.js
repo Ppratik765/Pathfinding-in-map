@@ -63,11 +63,22 @@ class MinHeap {
   get length() { return this.heap.length; }
 }
 
-// --- FAST HEURISTIC (Zero Allocation) ---
-const getHeuristicFast = (nodeIdA, nodeIdB, graph) => {
+// --- FIX: RAW HAVERSINE HEURISTIC (Kilometers) ---
+// This aligns the units with the graph weights, fixing A* speed.
+// It is pure math (no object creation), so it remains blazing fast.const getHeuristicFast = (nodeIdA, nodeIdB, graph) => {
   const nA = graph[nodeIdA];
   const nB = graph[nodeIdB];
-  return Math.abs(nA.lng - nB.lng) + Math.abs(nA.lat - nB.lat);
+  
+  const R = 6371; // Earth radius in km
+  const dLat = (nB.lat - nA.lat) * (Math.PI / 180);
+  const dLon = (nB.lng - nA.lng) * (Math.PI / 180);
+  
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(nA.lat * (Math.PI / 180)) * Math.cos(nB.lat * (Math.PI / 180)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Returns distance in KM
 };
 
 export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
