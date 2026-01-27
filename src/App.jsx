@@ -100,7 +100,7 @@ function App() {
             <Info size={20} />
         </button>
         {/* FIX: Width reduced to 250px (Desktop) & 85vw (Mobile). Left aligned on mobile. */}
-        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[65vw] sm:w-[230px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
+        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[40vw] sm:w-[230px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
             <h3 className="font-bold text-sm mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
             <ol className="list-decimal pl-4 space-y-1.5 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
