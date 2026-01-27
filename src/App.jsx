@@ -49,6 +49,14 @@ function App() {
   };
   const handleLoadRoads = () => { if(mapRefs.current[0]) mapRefs.current[0].loadRoads(); };
   
+  const formatDist = (cost, explored) => {
+      const c = parseFloat(cost);
+      const e = parseFloat(explored);
+      // If we explored a lot but found 0 path cost, it means no path was found
+      if (c === 0 && e > 0) return <span className="text-red-500">No Path</span>;
+      return <span className="font-bold text-orange-500">{cost}km</span>;
+  };
+
   const handleRun = () => { 
       setResults({}); 
       setFinishedCount(0); 
@@ -260,12 +268,11 @@ function App() {
 
                         {/* DESKTOP STATS */}
                         <div className={`hidden md:flex transition-opacity duration-500 ${results[index] ? 'opacity-100' : 'opacity-0'} bg-white dark:bg-gray-800 px-2 rounded border border-gray-300 dark:border-gray-600 shadow-sm items-center gap-2 text-[10px] font-mono h-6 ml-1`}>
-                             <div className="flex gap-0.5"><span className="opacity-40">Dist:</span><span className="font-bold text-orange-500">{results[index]?.cost}km</span></div>
+                             <div className="flex gap-0.5"><span className="opacity-40">Dist:</span>{formatDist(results[index]?.cost, results[index]?.exploredDist)}</div>
                              <div className="w-px h-2.5 bg-gray-300 dark:bg-gray-600"></div>
                              <div className="flex gap-0.5"><span className="opacity-40">Time:</span><span className="font-bold">{results[index]?.time}ms</span></div>
                              <div className="w-px h-2.5 bg-gray-300 dark:bg-gray-600"></div>
-                             <div className="flex gap-0.5"><span className="opacity-40">Explored:</span><span className="font-bold text-blue-500">{results[index]?.exploredDist}km</span></div>
-                        </div>
+                             <div className="flex gap-0.5"><span className="opacity-40">Explored:</span><span className="font-bold text-blue-500">{results[index]?.exploredDist}km</span></div>                        </div>
                     </div>
 
                     {/* MAP CANVAS */}
@@ -290,12 +297,11 @@ function App() {
                     {/* MOBILE STATS FOOTER */}
                     <div className={`flex md:hidden justify-end transition-all duration-500 ${results[index] ? 'opacity-100 max-h-10' : 'opacity-0 max-h-0'}`}>
                         <div className="bg-white/90 dark:bg-gray-900/90 px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-3 text-[10px] font-mono">
-                             <div className="flex gap-1"><span className="opacity-50">Dist:</span><span className="font-bold text-orange-500">{results[index]?.cost}km</span></div>
+                             <div className="flex gap-1"><span className="opacity-50">Dist:</span>{formatDist(results[index]?.cost, results[index]?.exploredDist)}</div>
                              <div className="w-px h-3 bg-gray-400"></div>
                              <div className="flex gap-1"><span className="opacity-50">Time:</span><span className="font-bold">{results[index]?.time}ms</span></div>
                              <div className="w-px h-3 bg-gray-400"></div>
-                             <div className="flex gap-1"><span className="opacity-50">Exp:</span><span className="font-bold text-blue-500">{results[index]?.exploredDist}km</span></div>
-                        </div>
+                             <div className="flex gap-1"><span className="opacity-50">Exp:</span><span className="font-bold text-blue-500">{results[index]?.exploredDist}km</span></div>                        </div>
                     </div>
                 </div>
             );

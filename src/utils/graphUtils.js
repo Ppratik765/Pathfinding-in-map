@@ -30,12 +30,12 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   if (zoom < 15) {
       // FAST MODE (Zoom 9-14): Only load major arteries. 
       // Ignores thousands of small residential streets.
-      console.log("🚀 Fast Mode: Major roads only");
-      roadFilter = `["highway"~"^(motorway|trunk|primary|secondary|tertiary)$"]`;
+      console.log("🚀 Fast Mode: Major roads + Links");
+      roadFilter = `["highway"~"^(motorway|trunk|primary|secondary|tertiary|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"]`;
   } else {
       // DETAIL MODE (Zoom 13+): Load everything playable.
       console.log("🔍 Detail Mode: All streets");
-      roadFilter = `["highway"]["highway"!~"footway|path|service|track|steps|pedestrian"]`;
+      roadFilter = `["highway"]["highway"!~"footway|cycleway|path|service|track|pedestrian"]`;
   }
 
   const query = `
@@ -82,6 +82,12 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
   geojson.features.forEach(feature => {
     if (feature.geometry.type === 'LineString') {
       const coords = feature.geometry.coordinates;
+      const props = feature.properties || {};
+      
+      // --- FIX: ONE-WAY LOGIC ---
+      // Check if road is explicitly one-way OR is a roundabout
+      const isOneWay = props.oneway === 'yes' || props.junction === 'roundabout';
+
       for (let i = 0; i < coords.length - 1; i++) {
         const from = coords[i];
         const to = coords[i + 1];
@@ -97,8 +103,13 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
         if (!nodes[fromId]) nodes[fromId] = { id: fromId, lng: from[0], lat: from[1], neighbors: [] };
         if (!nodes[toId]) nodes[toId] = { id: toId, lng: to[0], lat: to[1], neighbors: [] };
 
+        // Always add Forward direction (From -> To)
         nodes[fromId].neighbors.push({ node: toId, weight });
-        nodes[toId].neighbors.push({ node: fromId, weight });
+
+        // Only add Backward direction (To -> From) if NOT one-way
+        if (!isOneWay) {
+            nodes[toId].neighbors.push({ node: fromId, weight });
+        }
       }
     }
   });
