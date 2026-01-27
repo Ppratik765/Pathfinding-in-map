@@ -1,40 +1,57 @@
 import distance from '@turf/distance';
 import { point } from '@turf/helpers';
 
-// --- MIN HEAP CLASS (Speed Fix) ---
+// --- OPTIMIZED MIN HEAP ---
+// Accepts a score function to avoid property lookups during sort
 class MinHeap {
-  constructor() { this.heap = []; }
-  push(val) { this.heap.push(val); this.bubbleUp(); }
+  constructor(scoreFn) {
+    this.heap = [];
+    this.scoreFn = scoreFn;
+  }
+
+  push(val) {
+    this.heap.push(val);
+    this.bubbleUp();
+  }
+
   pop() {
     if (this.heap.length === 0) return null;
     const top = this.heap[0];
     const bottom = this.heap.pop();
-    if (this.heap.length > 0) { this.heap[0] = bottom; this.sinkDown(); }
+    if (this.heap.length > 0) {
+      this.heap[0] = bottom;
+      this.sinkDown();
+    }
     return top;
   }
+
   bubbleUp() {
     let idx = this.heap.length - 1;
     while (idx > 0) {
-      let parentIdx = Math.floor((idx - 1) / 2);
-      if (this.compare(this.heap[idx], this.heap[parentIdx]) < 0) {
+      let parentIdx = (idx - 1) >>> 1; // Bitwise shift for speed
+      if (this.scoreFn(this.heap[idx]) < this.scoreFn(this.heap[parentIdx])) {
         [this.heap[idx], this.heap[parentIdx]] = [this.heap[parentIdx], this.heap[idx]];
         idx = parentIdx;
       } else break;
     }
   }
+
   sinkDown() {
     let idx = 0;
     const length = this.heap.length;
     while (true) {
-      let leftIdx = 2 * idx + 1;
-      let rightIdx = 2 * idx + 2;
+      let leftIdx = (idx << 1) + 1;
+      let rightIdx = leftIdx + 1;
       let swap = null;
+
       if (leftIdx < length) {
-        if (this.compare(this.heap[leftIdx], this.heap[idx]) < 0) swap = leftIdx;
+        if (this.scoreFn(this.heap[leftIdx]) < this.scoreFn(this.heap[idx])) swap = leftIdx;
       }
       if (rightIdx < length) {
-        if ((swap === null && this.compare(this.heap[rightIdx], this.heap[idx]) < 0) ||
-            (swap !== null && this.compare(this.heap[rightIdx], this.heap[leftIdx]) < 0)) {
+        if (
+          (swap === null && this.scoreFn(this.heap[rightIdx]) < this.scoreFn(this.heap[idx])) ||
+          (swap !== null && this.scoreFn(this.heap[rightIdx]) < this.scoreFn(this.heap[leftIdx]))
+        ) {
           swap = rightIdx;
         }
       }
@@ -43,18 +60,18 @@ class MinHeap {
       idx = swap;
     }
   }
-  compare(a, b) {
-    const valA = a.dist !== undefined ? a.dist : (a.f !== undefined ? a.f : a.cost);
-    const valB = b.dist !== undefined ? b.dist : (b.f !== undefined ? b.f : b.cost);
-    return valA - valB;
-  }
+  
   get length() { return this.heap.length; }
 }
 
-const getHeuristic = (nodeIdA, nodeIdB, graph) => {
-  const nodeA = graph[nodeIdA];
-  const nodeB = graph[nodeIdB];
-  return distance(point([nodeA.lng, nodeA.lat]), point([nodeB.lng, nodeB.lat]));
+// --- FAST HEURISTIC (Zero Allocation) ---
+// Replaces heavy turf.distance with simple math. 
+// Uses Manhattan distance for speed and admissibility (prevents overestimating).
+const getHeuristicFast = (nodeIdA, nodeIdB, graph) => {
+  const nA = graph[nodeIdA];
+  const nB = graph[nodeIdB];
+  // Simple coordinate distance approximation (sufficient for heuristic sorting)
+  return Math.abs(nA.lng - nB.lng) + Math.abs(nA.lat - nB.lat);
 };
 
 export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
@@ -77,9 +94,8 @@ export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
   }
 
   const endTime = performance.now();
-  const timeTaken = (endTime - startTime).toFixed(1);
-
-  // Robust Cost Calculation
+  
+  // Calculate stats
   const totalCost = result.path.reduce((acc, currId, idx) => {
       if (idx === 0) return 0;
       const prevId = result.path[idx - 1];
@@ -88,7 +104,7 @@ export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
       if (!prevNode || !currNode) return acc;
       const edge = prevNode.neighbors.find(n => n.node === currId);
       if (edge) return acc + edge.weight;
-      else return acc + distance(point([prevNode.lng, prevNode.lat]), point([currNode.lng, currNode.lat]), {units: 'kilometers'});
+      return acc + distance(point([prevNode.lng, prevNode.lat]), point([currNode.lng, currNode.lat]), {units: 'kilometers'});
   }, 0);
 
   let exploredDist = 0;
@@ -102,29 +118,40 @@ export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
       }
   });
 
-  return { ...result, time: timeTaken, cost: totalCost.toFixed(2), visitedCount: result.visitedOrder.length, exploredDist: exploredDist.toFixed(2) };
+  return { 
+      ...result, 
+      time: (endTime - startTime).toFixed(1), 
+      cost: totalCost.toFixed(2),
+      visitedCount: result.visitedOrder.length,
+      exploredDist: exploredDist.toFixed(2)
+  };
 };
 
-// --- ALGO IMPLEMENTATIONS (Using Heap) ---
+// --- ALGORITHMS ---
 
 const runDijkstra = (graph, start, end) => {
-  const distances = {}; const previous = {}; const pq = new MinHeap();
+  const distances = { [start]: 0 };
+  const previous = {};
+  const pq = new MinHeap(n => n.dist); // Custom Score Function
   pq.push({ id: start, dist: 0 });
-  const visitedOrder = []; const visitedSet = new Set();
-  distances[start] = 0;
+  
+  const visitedOrder = [];
+  const visitedSet = new Set();
 
   while (pq.length) {
     const { id: curr, dist: currDist } = pq.pop();
+
     if (visitedSet.has(curr)) continue;
     visitedSet.add(curr);
     visitedOrder.push({ id: curr, from: previous[curr] });
+
     if (curr === end) break;
-    if (currDist > (distances[curr] || Infinity)) continue;
+    if (currDist > (distances[curr] ?? Infinity)) continue;
 
     for (const edge of graph[curr].neighbors) {
-      if (visitedSet.has(edge.node) || edge.weight === Infinity) continue;
+      if (edge.weight === Infinity) continue;
       const newDist = currDist + edge.weight;
-      if (newDist < (distances[edge.node] || Infinity)) {
+      if (newDist < (distances[edge.node] ?? Infinity)) {
         distances[edge.node] = newDist;
         previous[edge.node] = curr;
         pq.push({ id: edge.node, dist: newDist });
@@ -135,25 +162,36 @@ const runDijkstra = (graph, start, end) => {
 };
 
 const runAStar = (graph, start, end) => {
-  const gScore = {}; const previous = {}; const visitedOrder = []; const visitedSet = new Set();
-  const openSet = new MinHeap();
-  gScore[start] = 0;
-  openSet.push({ id: start, f: getHeuristic(start, end, graph) });
+  const gScore = { [start]: 0 };
+  const previous = {};
+  const visitedOrder = [];
+  const visitedSet = new Set();
+  
+  // Use 'f' for heap sorting
+  const openSet = new MinHeap(n => n.f); 
+  openSet.push({ id: start, f: 0 }); // Initial f doesn't strictly matter as g=0
 
   while (openSet.length) {
     const { id: curr } = openSet.pop();
+
     if (visitedSet.has(curr)) continue;
     visitedSet.add(curr);
     visitedOrder.push({ id: curr, from: previous[curr] });
+
     if (curr === end) break;
 
     for (const edge of graph[curr].neighbors) {
       if (edge.weight === Infinity) continue;
-      const tentativeG = (gScore[curr] || 0) + edge.weight;
-      if (tentativeG < (gScore[edge.node] || Infinity)) {
-        previous[edge.node] = curr;
-        gScore[edge.node] = tentativeG;
-        openSet.push({ id: edge.node, f: tentativeG + getHeuristic(edge.node, end, graph) });
+      const neighbor = edge.node;
+      
+      const tentativeG = (gScore[curr] ?? Infinity) + edge.weight;
+      
+      if (tentativeG < (gScore[neighbor] ?? Infinity)) {
+        previous[neighbor] = curr;
+        gScore[neighbor] = tentativeG;
+        // FAST HEURISTIC CALL
+        const fVal = tentativeG + getHeuristicFast(neighbor, end, graph);
+        openSet.push({ id: neighbor, f: fVal });
       }
     }
   }
@@ -161,22 +199,28 @@ const runAStar = (graph, start, end) => {
 };
 
 const runGreedy = (graph, start, end) => {
-  const visitedOrder = []; const previous = {}; const visitedSet = new Set();
-  const pq = new MinHeap();
-  pq.push({ id: start, cost: getHeuristic(start, end, graph) });
+  const visitedOrder = [];
+  const previous = {};
+  const visitedSet = new Set();
+  const pq = new MinHeap(n => n.cost);
+  
+  pq.push({ id: start, cost: 0 });
 
   while (pq.length) {
     const { id: curr } = pq.pop();
+
     if (visitedSet.has(curr)) continue;
     visitedSet.add(curr);
     visitedOrder.push({ id: curr, from: previous[curr] });
+
     if (curr === end) break;
 
     for (const edge of graph[curr].neighbors) {
       if (edge.weight === Infinity) continue;
       if (!visitedSet.has(edge.node)) {
         previous[edge.node] = curr;
-        pq.push({ id: edge.node, cost: getHeuristic(edge.node, end, graph) });
+        const h = getHeuristicFast(edge.node, end, graph);
+        pq.push({ id: edge.node, cost: h });
       }
     }
   }
@@ -184,76 +228,106 @@ const runGreedy = (graph, start, end) => {
 };
 
 const runBidirectional = (graph, start, end) => {
-  const distStart = {}; const distEnd = {}; const prevStart = {}; const prevEnd = {};
-  const pqStart = new MinHeap(); const pqEnd = new MinHeap();
-  pqStart.push({ id: start, dist: 0 }); pqEnd.push({ id: end, dist: 0 });
-  const visitedStart = new Set(); const visitedEnd = new Set(); const visitedOrder = [];
+  const distStart = { [start]: 0 };
+  const distEnd = { [end]: 0 };
+  const prevStart = {};
+  const prevEnd = {};
   
-  distStart[start] = 0; distEnd[end] = 0;
-  let bestMeetNode = null; let bestMeetDist = Infinity;
+  const pqStart = new MinHeap(n => n.dist);
+  const pqEnd = new MinHeap(n => n.dist);
+  
+  pqStart.push({ id: start, dist: 0 });
+  pqEnd.push({ id: end, dist: 0 });
+  
+  const visitedStart = new Set();
+  const visitedEnd = new Set();
+  const visitedOrder = [];
+
+  let bestMeetNode = null;
+  let bestMeetDist = Infinity;
 
   while (pqStart.length && pqEnd.length) {
-    // Forward
+    // 1. Forward
     if (pqStart.length) {
-        const { id: curr } = pqStart.pop();
+        const { id: curr, dist: d } = pqStart.pop();
         if (!visitedStart.has(curr)) {
             visitedStart.add(curr);
             visitedOrder.push({ id: curr, from: prevStart[curr] });
+            
             if (visitedEnd.has(curr)) {
-                const total = (distStart[curr] || 0) + (distEnd[curr] || 0);
+                const total = d + (distEnd[curr] ?? 0);
                 if (total < bestMeetDist) { bestMeetDist = total; bestMeetNode = curr; }
             }
-            for (const edge of graph[curr].neighbors) {
-                if(edge.weight === Infinity) continue;
-                const newDist = (distStart[curr] || 0) + edge.weight;
-                if (newDist < (distStart[edge.node] || Infinity)) {
-                    distStart[edge.node] = newDist;
-                    prevStart[edge.node] = curr;
-                    pqStart.push({ id: edge.node, dist: newDist });
+
+            // Optimization: Stop this branch if it's already worse than a known path
+            if (d < bestMeetDist) {
+                for (const edge of graph[curr].neighbors) {
+                    if(edge.weight === Infinity) continue;
+                    const newDist = d + edge.weight;
+                    if (newDist < (distStart[edge.node] ?? Infinity)) {
+                        distStart[edge.node] = newDist;
+                        prevStart[edge.node] = curr;
+                        pqStart.push({ id: edge.node, dist: newDist });
+                    }
                 }
             }
         }
     }
-    // Backward
+
+    // 2. Backward
     if (pqEnd.length) {
-        const { id: curr } = pqEnd.pop();
+        const { id: curr, dist: d } = pqEnd.pop();
         if (!visitedEnd.has(curr)) {
             visitedEnd.add(curr);
             visitedOrder.push({ id: curr, from: prevEnd[curr] });
+            
             if (visitedStart.has(curr)) {
-                const total = (distStart[curr] || 0) + (distEnd[curr] || 0);
+                const total = (distStart[curr] ?? 0) + d;
                 if (total < bestMeetDist) { bestMeetDist = total; bestMeetNode = curr; }
             }
-            for (const edge of graph[curr].neighbors) {
-                if(edge.weight === Infinity) continue;
-                const newDist = (distEnd[curr] || 0) + edge.weight;
-                if (newDist < (distEnd[edge.node] || Infinity)) {
-                    distEnd[edge.node] = newDist;
-                    prevEnd[edge.node] = curr;
-                    pqEnd.push({ id: edge.node, dist: newDist });
+
+            if (d < bestMeetDist) {
+                for (const edge of graph[curr].neighbors) {
+                    if(edge.weight === Infinity) continue;
+                    const newDist = d + edge.weight;
+                    if (newDist < (distEnd[edge.node] ?? Infinity)) {
+                        distEnd[edge.node] = newDist;
+                        prevEnd[edge.node] = curr;
+                        pqEnd.push({ id: edge.node, dist: newDist });
+                    }
                 }
             }
         }
     }
+
+    // Termination Check
     if (bestMeetNode) {
          const topStart = pqStart.length ? pqStart.heap[0].dist : Infinity;
          const topEnd = pqEnd.length ? pqEnd.heap[0].dist : Infinity;
-         if (topStart + topEnd >= bestMeetDist) return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd) };
+         if (topStart + topEnd >= bestMeetDist) {
+             return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd) };
+         }
     }
   }
+  
   if (bestMeetNode) return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd) };
   return { visitedOrder, path: [] };
 };
 
 const runBFS = (graph, start, end) => {
-  const queue = [start]; const visitedOrder = []; const visitedSet = new Set([start]); const previous = {};
+  const queue = [start];
+  const visitedOrder = [];
+  const visitedSet = new Set([start]);
+  const previous = {};
   while (queue.length) {
     const curr = queue.shift();
     visitedOrder.push({ id: curr, from: previous[curr] });
     if (curr === end) break;
     for (const edge of graph[curr].neighbors) {
       if (!visitedSet.has(edge.node) && edge.weight !== Infinity) {
-        visitedSet.add(edge.node); previous[edge.node] = curr; queue.push(edge.node);
+        visitedSet.add(edge.node);
+        previous[edge.node] = curr;
+        queue.push(edge.node);
       }
     }
   }
@@ -261,7 +335,10 @@ const runBFS = (graph, start, end) => {
 };
 
 const runDFS = (graph, start, end) => {
-  const stack = [start]; const visitedOrder = []; const visitedSet = new Set(); const previous = {};
+  const stack = [start];
+  const visitedOrder = [];
+  const visitedSet = new Set();
+  const previous = {};
   while (stack.length) {
     const curr = stack.pop();
     if (visitedSet.has(curr)) continue;
@@ -271,7 +348,8 @@ const runDFS = (graph, start, end) => {
     const neighbors = [...graph[curr].neighbors].reverse(); 
     for (const edge of neighbors) {
       if (!visitedSet.has(edge.node) && edge.weight !== Infinity) {
-        previous[edge.node] = curr; stack.push(edge.node);
+        previous[edge.node] = curr;
+        stack.push(edge.node);
       }
     }
   }
@@ -279,15 +357,18 @@ const runDFS = (graph, start, end) => {
 };
 
 const reconstructPath = (previous, end) => {
-  const path = []; let curr = end;
+  const path = [];
+  let curr = end;
   while (curr) { path.unshift(curr); curr = previous[curr]; }
   return path.length > 1 ? path : [];
 };
 
 const mergeBidirectionalPath = (meetNode, prevStart, prevEnd) => {
-    const path1 = []; let curr = meetNode;
+    const path1 = [];
+    let curr = meetNode;
     while(curr) { path1.unshift(curr); curr = prevStart[curr]; }
-    const path2 = []; curr = prevEnd[meetNode]; 
+    const path2 = [];
+    curr = prevEnd[meetNode]; 
     while(curr) { path2.push(curr); curr = prevEnd[curr]; }
     return [...path1, ...path2];
 };
