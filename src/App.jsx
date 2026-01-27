@@ -56,7 +56,7 @@ function App() {
   };
   
   const handleReset = () => { 
-      // FIX: Full Reset (Clears Loaded Area/Graph too)
+      // Fully Wipe Data
       setSharedData({ geojson: null, graph: null, start: null, end: null, obstacles: {} }); 
       setResults({});
       setFinishedCount(0);
@@ -100,8 +100,8 @@ function App() {
         <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
             <Info size={20} />
         </button>
-        {/* Tooltip: Adjusted for mobile viewport safety */}
-        <div className="absolute top-10 right-[-60px] md:right-auto md:left-1/2 md:-translate-x-1/2 w-[280px] sm:w-[300px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[60] text-sm leading-relaxed">
+        {/* FIX: Z-Index 100, Position Fixed for Mobile */}
+        <div className="absolute top-10 right-0 md:right-auto md:left-1/2 md:-translate-x-1/2 w-[280px] sm:w-[300px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-sm leading-relaxed">
             <h3 className="font-bold text-base mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
             <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
@@ -137,19 +137,22 @@ function App() {
   );
 
   const RunBtn = () => (
-    <button onClick={handleRun} className="flex items-center justify-center gap-2 px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all w-full md:w-auto"><Play size={14} /> RUN</button>
+    // FIX: Reduced px-3 for mobile to fit better
+    <button onClick={handleRun} className="flex items-center justify-center gap-2 px-3 md:px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all w-full md:w-auto whitespace-nowrap"><Play size={14} /> RUN</button>
   );
 
   const ToolsGroup = () => (
-    <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-full md:w-auto justify-center md:justify-start">
+    // FIX: Changed w-full to flex-1 so it shares space with RunBtn
+    <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl flex-1 md:flex-none justify-center md:justify-start">
         {[
             { id: 'start', icon: MousePointer2, label: 'Start', col: 'text-green-600' },
             { id: 'end', icon: MousePointer2, label: 'End', col: 'text-red-600' },
             { id: 'wall', icon: BrickWall, label: 'Block', col: 'text-gray-600 dark:text-gray-300' },
             { id: 'traffic', icon: TrafficCone, label: 'Slow', col: 'text-orange-500' }
         ].map(t => (
-            <button key={t.id} onClick={() => setTool(t.id)} className={clsx("flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-1 md:flex-none justify-center", tool === t.id ? `bg-white dark:bg-gray-600 shadow-md ${t.col} scale-105` : "opacity-60 hover:opacity-100")}>
-                <t.icon size={14} /> {t.label}
+            <button key={t.id} onClick={() => setTool(t.id)} className={clsx("flex items-center gap-1 px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-1 md:flex-none justify-center", tool === t.id ? `bg-white dark:bg-gray-600 shadow-md ${t.col} scale-105` : "opacity-60 hover:opacity-100")}>
+                <t.icon size={14} /> <span className="hidden sm:inline">{t.label}</span>
+                <span className="sm:hidden">{t.label.charAt(0)}</span>
             </button>
         ))}
     </div>
@@ -181,13 +184,12 @@ function App() {
             {/* ROW 2 (Mobile) / CENTER (Desktop) */}
             <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none">
                  <div id="geocoder-container" className="flex-1 h-10 relative pt-1"></div>
-                 {/* Desktop Info */}
                  <div className="hidden md:block"><InfoTooltip /></div>
-                 {/* Mobile Load */}
                  <div className="md:hidden"><LoadBtn /></div>
             </div>
 
             {/* ROW 3 (Mobile) / RIGHT (Desktop) */}
+            {/* FIX: Removed w-full, let flexbox handle it */}
             <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-3 order-3 md:order-none">
                 <ToolsGroup />
                 
@@ -202,8 +204,8 @@ function App() {
                     <ThemeToggle />
                 </div>
 
-                {/* Mobile Run */}
-                <div className="md:hidden w-1/4"><RunBtn /></div>
+                {/* Mobile Run: w-auto to fit next to tools */}
+                <div className="md:hidden w-auto"><RunBtn /></div>
             </div>
         </div>
         
@@ -222,26 +224,18 @@ function App() {
                     
                     {/* COMPACT TOP BAR */}
                     <div className="flex justify-between items-center px-0.5 overflow-hidden">
-                        
-                        {/* LEFT GROUP */}
                         <div className="flex items-center gap-1 shrink-0">
-                            
-                            {/* MINI CHECKBOX (Master) */}
                             {index === 0 && (
                                 <button onClick={() => setShowPerimeter(!showPerimeter)} className="flex items-center gap-1 px-1.5 bg-gray-200 dark:bg-gray-800 rounded hover:bg-blue-100 text-gray-700 dark:text-gray-300 transition-colors h-6" title="Toggle Loaded Area">
                                     <CheckSquare size={12} className={showPerimeter ? "text-blue-500" : "opacity-40"} />
                                     <span className="opacity-50 text-[9px] font-bold uppercase tracking-tight">Show loaded area</span>
                                 </button>
                             )}
-
-                            {/* MINI REPLAY */}
                             {results[index] && (
                                 <button onClick={() => handleReplay(index)} className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-800 rounded hover:bg-blue-100 text-gray-600 dark:text-gray-300 transition-colors" title="Replay">
                                     <RotateCcw size={12} />
                                 </button>
                             )}
-
-                            {/* MINI DROPDOWN */}
                             <div className="bg-white dark:bg-gray-800 px-2 rounded border border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-1.5 h-6">
                                 <span className="opacity-50 text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Algo {index+1}</span>
                                 <select value={algo} onChange={(e) => changeAlgo(index, e.target.value)} className="bg-transparent outline-none text-[10px] font-bold text-gray-800 dark:text-gray-100 cursor-pointer w-20">
@@ -250,7 +244,7 @@ function App() {
                             </div>
                         </div>
 
-                        {/* RIGHT GROUP: COMPACT STATS (Desktop Only) */}
+                        {/* DESKTOP STATS */}
                         <div className={`hidden md:flex transition-opacity duration-500 ${results[index] ? 'opacity-100' : 'opacity-0'} bg-white dark:bg-gray-800 px-2 rounded border border-gray-300 dark:border-gray-600 shadow-sm items-center gap-2 text-[10px] font-mono h-6 ml-1`}>
                              <div className="flex gap-0.5"><span className="opacity-40">Dist:</span><span className="font-bold text-orange-500">{results[index]?.cost}km</span></div>
                              <div className="w-px h-2.5 bg-gray-300 dark:bg-gray-600"></div>
@@ -279,7 +273,7 @@ function App() {
                         />
                     </div>
 
-                    {/* MOBILE STATS FOOTER (Mobile Only) */}
+                    {/* MOBILE STATS FOOTER */}
                     <div className={`flex md:hidden justify-end transition-all duration-500 ${results[index] ? 'opacity-100 max-h-10' : 'opacity-0 max-h-0'}`}>
                         <div className="bg-white/90 dark:bg-gray-900/90 px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-3 text-[10px] font-mono">
                              <div className="flex gap-1"><span className="opacity-50">D:</span><span className="font-bold text-orange-500">{results[index]?.cost}km</span></div>
