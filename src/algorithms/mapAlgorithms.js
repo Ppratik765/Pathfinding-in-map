@@ -10,9 +10,9 @@ const getHeuristic = (nodeIdA, nodeIdB, graph) => {
 export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
   const startTime = performance.now();
   
-  // --- SAFETY CHECK ---
+  // --- SAFETY CHECK: Prevent 0km Glitch ---
   if (!graph[startNodeId] || !graph[endNodeId]) {
-      console.error("Start or End node not found in graph!");
+      console.warn("Algorithm aborted: Start or End node not found in graph.");
       return { visitedOrder: [], path: [], time: 0, cost: 0, visitedCount: 0, exploredDist: 0 };
   }
 
@@ -31,27 +31,38 @@ export const runAlgorithm = (algoType, graph, startNodeId, endNodeId) => {
   const endTime = performance.now();
   const timeTaken = (endTime - startTime).toFixed(1);
 
-  // --- ROBUST COST CALCULATION ---
+  // --- ROBUST COST CALCULATION (Fixes Half-Distance Bug) ---
   const totalCost = result.path.reduce((acc, currId, idx) => {
       if (idx === 0) return 0;
       const prevId = result.path[idx - 1];
       const prevNode = graph[prevId];
-      if (!prevNode) return acc;
+      const currNode = graph[currId];
+      
+      if (!prevNode || !currNode) return acc;
 
+      // 1. Try to find the defined edge weight (Traffic/Road Speed)
       const edge = prevNode.neighbors.find(n => n.node === currId);
       
-      // If edge exists, add weight. If not (jump?), add 0 or fallback.
-      return acc + (edge ? edge.weight : 0);
+      if (edge) {
+          return acc + edge.weight;
+      } else {
+          // 2. Fallback: If edge is missing (e.g. Reverse traversal on One-Way), use raw distance
+          // This ensures we never add "0" for a valid step.
+          const rawDist = distance(point([prevNode.lng, prevNode.lat]), point([currNode.lng, currNode.lat]), {units: 'kilometers'});
+          return acc + rawDist;
+      }
   }, 0);
 
-  // Calculate Explored Distance
+  // Calculate Explored Distance (Visual Metric)
   let exploredDist = 0;
   result.visitedOrder.forEach(item => {
       if (item.from) {
           const parent = graph[item.from];
           if(parent) {
               const edge = parent.neighbors.find(n => n.node === item.id);
-              if (edge && edge.weight !== Infinity) exploredDist += edge.weight;
+              // Use raw distance if edge weight is Infinity (Block) or missing
+              const dist = edge && edge.weight !== Infinity ? edge.weight : 0;
+              exploredDist += dist;
           }
       }
   });
@@ -74,7 +85,7 @@ const runDijkstra = (graph, start, end) => {
   const visitedOrder = [];
   const visitedSet = new Set();
 
-  Object.keys(graph).forEach(k => distances[k] = Infinity);
+  // Optimization: Don't fill distances with Infinity upfront (Save Memory on huge maps)
   distances[start] = 0;
 
   while (pq.length) {
@@ -89,8 +100,11 @@ const runDijkstra = (graph, start, end) => {
 
     for (const edge of graph[curr].neighbors) {
       if (visitedSet.has(edge.node) || edge.weight === Infinity) continue;
-      const newDist = distances[curr] + edge.weight;
-      if (newDist < distances[edge.node]) {
+      
+      const currentDist = distances[curr] || 0;
+      const newDist = currentDist + edge.weight;
+      
+      if (newDist < (distances[edge.node] || Infinity)) {
         distances[edge.node] = newDist;
         previous[edge.node] = curr;
         pq.push({ id: edge.node, dist: newDist });
@@ -107,7 +121,6 @@ const runAStar = (graph, start, end) => {
   const visitedOrder = [];
   const visitedSet = new Set();
   
-  Object.keys(graph).forEach(k => { gScore[k] = Infinity; fScore[k] = Infinity; });
   gScore[start] = 0;
   fScore[start] = getHeuristic(start, end, graph);
 
@@ -126,13 +139,14 @@ const runAStar = (graph, start, end) => {
     for (const edge of graph[curr].neighbors) {
       if (edge.weight === Infinity) continue;
       const neighbor = edge.node;
-      const tentativeG = gScore[curr] + edge.weight;
       
-      if (tentativeG < gScore[neighbor]) {
+      const currentG = gScore[curr] || 0;
+      const tentativeG = currentG + edge.weight;
+      
+      if (tentativeG < (gScore[neighbor] || Infinity)) {
         previous[neighbor] = curr;
         gScore[neighbor] = tentativeG;
         fScore[neighbor] = gScore[neighbor] + getHeuristic(neighbor, end, graph);
-        // Deduplication in PQ is expensive, simpler to push and handle visited check
         openSet.push({ id: neighbor, f: fScore[neighbor] });
       }
     }
@@ -173,7 +187,7 @@ const runDFS = (graph, start, end) => {
     visitedSet.add(curr);
     visitedOrder.push({ id: curr, from: previous[curr] });
     if (curr === end) break;
-    // Reverse neighbors to simulate recursion order
+    
     const neighbors = [...graph[curr].neighbors].reverse(); 
     for (const edge of neighbors) {
       if (!visitedSet.has(edge.node) && edge.weight !== Infinity) {
@@ -212,14 +226,13 @@ const runGreedy = (graph, start, end) => {
   return { visitedOrder, path: reconstructPath(previous, end), previous };
 };
 
-// --- FIX: BIDIRECTIONAL DIJKSTRA (Not BFS) ---
+// --- FIXED BIDIRECTIONAL SEARCH (DIJKSTRA) ---
 const runBidirectional = (graph, start, end) => {
   const distStart = {};
   const distEnd = {};
   const prevStart = {};
   const prevEnd = {};
   
-  // Use Priority Queues for distance accuracy
   const pqStart = [{ id: start, dist: 0 }];
   const pqEnd = [{ id: end, dist: 0 }];
   
@@ -227,16 +240,14 @@ const runBidirectional = (graph, start, end) => {
   const visitedEnd = new Set();
   const visitedOrder = [];
 
-  Object.keys(graph).forEach(k => { distStart[k] = Infinity; distEnd[k] = Infinity; });
   distStart[start] = 0;
   distEnd[end] = 0;
 
-  // Track best connection found so far
   let bestMeetNode = null;
   let bestMeetDist = Infinity;
 
   while (pqStart.length && pqEnd.length) {
-    // Forward Step
+    // 1. Forward Step
     if (pqStart.length) {
         pqStart.sort((a,b) => a.dist - b.dist);
         const { id: curr } = pqStart.shift();
@@ -246,15 +257,14 @@ const runBidirectional = (graph, start, end) => {
             visitedOrder.push({ id: curr, from: prevStart[curr] });
 
             if (visitedEnd.has(curr)) {
-                // Potential meeting point (node overlap)
-                const total = distStart[curr] + distEnd[curr];
+                const total = (distStart[curr] || 0) + (distEnd[curr] || 0);
                 if (total < bestMeetDist) { bestMeetDist = total; bestMeetNode = curr; }
             }
 
             for (const edge of graph[curr].neighbors) {
                 if(edge.weight === Infinity) continue;
-                const newDist = distStart[curr] + edge.weight;
-                if (newDist < distStart[edge.node]) {
+                const newDist = (distStart[curr] || 0) + edge.weight;
+                if (newDist < (distStart[edge.node] || Infinity)) {
                     distStart[edge.node] = newDist;
                     prevStart[edge.node] = curr;
                     pqStart.push({ id: edge.node, dist: newDist });
@@ -263,7 +273,7 @@ const runBidirectional = (graph, start, end) => {
         }
     }
 
-    // Backward Step
+    // 2. Backward Step
     if (pqEnd.length) {
         pqEnd.sort((a,b) => a.dist - b.dist);
         const { id: curr } = pqEnd.shift();
@@ -273,16 +283,14 @@ const runBidirectional = (graph, start, end) => {
             visitedOrder.push({ id: curr, from: prevEnd[curr] });
 
             if (visitedStart.has(curr)) {
-                // Potential meeting point
-                const total = distStart[curr] + distEnd[curr];
+                const total = (distStart[curr] || 0) + (distEnd[curr] || 0);
                 if (total < bestMeetDist) { bestMeetDist = total; bestMeetNode = curr; }
             }
 
             for (const edge of graph[curr].neighbors) {
                 if(edge.weight === Infinity) continue;
-                // Note: Graph is undirected for weight, but we need to check direction if directed
-                const newDist = distEnd[curr] + edge.weight;
-                if (newDist < distEnd[edge.node]) {
+                const newDist = (distEnd[curr] || 0) + edge.weight;
+                if (newDist < (distEnd[edge.node] || Infinity)) {
                     distEnd[edge.node] = newDist;
                     prevEnd[edge.node] = curr;
                     pqEnd.push({ id: edge.node, dist: newDist });
@@ -291,14 +299,18 @@ const runBidirectional = (graph, start, end) => {
         }
     }
 
-    // Termination: If best path found is smaller than the smallest radius of both searches
-    // Simple heuristic: Stop if we found a meet and searched reasonably far.
-    // For visualization, we often stop exactly when they touch to show the "meet".
+    // Heuristic Termination: Stop if we found a path and queues are getting worse
     if (bestMeetNode) {
-        // Construct path immediately upon first valid meet for visual effect
-        return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd) };
+        const topStart = pqStart.length ? pqStart[0].dist : Infinity;
+        const topEnd = pqEnd.length ? pqEnd[0].dist : Infinity;
+        if (topStart + topEnd >= bestMeetDist) {
+             return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd) };
+        }
     }
   }
+  
+  // Fallback if queues empty but path found
+  if (bestMeetNode) return { visitedOrder, path: mergeBidirectionalPath(bestMeetNode, prevStart, prevEnd) };
 
   return { visitedOrder, path: [] };
 };
@@ -316,7 +328,7 @@ const mergeBidirectionalPath = (meetNode, prevStart, prevEnd) => {
     while(curr) { path1.unshift(curr); curr = prevStart[curr]; }
     
     const path2 = [];
-    curr = prevEnd[meetNode]; // Start from parent of meetNode to avoid duplication
+    curr = prevEnd[meetNode]; 
     while(curr) { path2.push(curr); curr = prevEnd[curr]; }
     
     return [...path1, ...path2];
