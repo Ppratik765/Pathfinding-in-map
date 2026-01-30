@@ -244,7 +244,7 @@ function App() {
                 <div key={index} className={clsx("flex flex-col gap-1", heightClass, widthClass)}>
                     
                     {/* COMPACT TOP BAR */}
-                    <div className="flex justify-between items-center px-0.5 overflow-hidden">
+                    <div className="flex justify-between items-center px-0.5 overflow-x-auto overflow-y-hidden w-full whitespace-nowrap min-h-[32px]">
                         <div className="flex items-center gap-1 shrink-0">
                             {index === 0 && (
                                 <button onClick={() => setShowPerimeter(!showPerimeter)} className="flex items-center gap-1 px-1.5 bg-gray-200 dark:bg-gray-800 rounded hover:bg-blue-100 text-gray-700 dark:text-gray-300 transition-colors h-6" title="Toggle Loaded Area">
