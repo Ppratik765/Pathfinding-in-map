@@ -189,7 +189,7 @@ function App() {
       <div className="w-full max-w-7xl z-50 p-4 relative">
         <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 border border-gray-200 dark:border-gray-700 overflow-x-auto">            
             {/* ROW 1 (Mobile) / LEFT (Desktop) */}
-            <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-3 flex-shrink-0">
+            <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-3">
                 <h1 className="text-xl font-extrabold flex items-center gap-2">
                     <MapIcon className="text-blue-500" size={24} /> Way<span className="text-blue-600 dark:text-blue-400">Finder</span>
                 </h1>
@@ -203,7 +203,7 @@ function App() {
             </div>
             
             {/* ROW 2 (Mobile) / CENTER (Desktop) */}
-            <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none min-w-[200px]">
+            <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none ">
                  {/* FIX: flex-1 ensures it takes available space, but LoadBtn takes what it needs */}
                  <div id="geocoder-container" className="flex-1 h-8 relative pt-0 min-w-0"></div>
                  <div className="hidden md:block"><InfoTooltip /></div>
