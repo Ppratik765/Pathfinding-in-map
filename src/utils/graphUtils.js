@@ -12,16 +12,24 @@ const SERVERS = [
 export const fetchRoadNetwork = async (bounds, zoom) => {
   // --- 1. INSTANT PRE-CHECKS (No waiting) ---
   if (zoom < 12) {
-      return { error: "Map is too large. Zoom in closer and then load." };
+      return { error: "Map is too large. Zoom in closer and load again." };
   }
 
   const width = Math.abs(bounds.east - bounds.west);
   const height = Math.abs(bounds.north - bounds.south);
   const area = width * height;
 
-  // Strict limit: 0.33 square degrees (approx large city size)
-  if (area > 0.33) {
-      return { error: "Area too large! Zoom in before loading." };
+  // Desktop (>768px): 0.33 (Large area)
+  // Mobile (<768px): 0.15 (Restricted area to prevent crashes)
+  const isMobile = window.innerWidth < 768;
+  const maxArea = isMobile ? 0.15 : 0.33;
+
+  if (area > maxArea) {
+      return { 
+          error: isMobile 
+            ? "Area too large for mobile! Zoom in." 
+            : "Area too large! Zoom in and load again." 
+      };
   }
 
   // --- 2. DYNAMIC QUERY ---
@@ -66,7 +74,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
       }
   }
 
-  return { error: "Servers are busy, unable to load roads networks. Try zooming in slightly." };
+  return { error: "Servers are busy, unable to load roads networks. Try after some time." };
 };
 
 export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {

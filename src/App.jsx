@@ -185,7 +185,7 @@ const InfoTooltip = () => (
 {/* Core Instructions */}
             <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300 mb-4">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
-                <li><span className="font-bold text-blue-500">Zoom</span> to your desired level (11+).</li>
+                <li><span className="font-bold text-blue-500">Zoom</span> to your desired level.</li>
                 <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span>.</li>
                 <li>Select <span className="font-bold text-green-600">Start</span> tool & click road.</li>
                 <li>Select <span className="font-bold text-red-600">End</span> tool & click road.</li>
