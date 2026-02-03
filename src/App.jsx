@@ -178,10 +178,9 @@ const InfoTooltip = () => (
         
         {/* FIX: Changed 'top-1/2 -translate-y-1/2' to 'top-24'. 
             This pushes the popup down to a safe distance from the top of the screen. */}
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[85vw] max-w-[300px] max-h-[70vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-[0_0_50px_rgba(0,0,0,0.3)] rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[9999] text-xs leading-relaxed">
+        <div className="fixed top-15 left-1/2 -translate-x-1/2 w-[85vw] max-w-[300px] max-h-[70vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-[0_0_50px_rgba(0,0,0,0.3)] rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[9999] text-xs leading-relaxed">
             <h3 className="font-bold text-sm mb-3 border-b pb-2 border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <span>How to Use</span>
-                <span className="text-[10px] text-gray-400 font-normal">(Hover to read)</span>
             </h3>
             <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
