@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { MapBoard } from './components/MapBoard';
 import { Background } from './components/Background';
-import { CitySelector } from './components/CitySelector'; 
 import { buildGraphFromGeoJSON } from './utils/graphUtils';
 import { decodeStateFromUrl, updateUrl } from './utils/urlUtils';
 import { Play, RefreshCw, Moon, Sun, Map as MapIcon, BrickWall, MousePointer2, Plus, Minus, TrafficCone, RotateCcw, Info, CheckSquare } from 'lucide-react';
@@ -104,11 +103,6 @@ function App() {
   };
   const handleLoadRoads = () => { if(mapRefs.current[0]) mapRefs.current[0].loadRoads(); };
   
-  const handlePresetSelect = (city) => {
-      setViewState({ center: [city.lng, city.lat], zoom: city.zoom, pitch: 60, bearing: 0 });
-      setStatus(`Warping to ${city.name}... Click Load!`);
-  };
-
   const formatDist = (cost, explored) => {
       const c = parseFloat(cost);
       const e = parseFloat(explored);
@@ -161,7 +155,7 @@ function App() {
 
   const isError = status.includes("Error") || status.includes("Zoom") || status.includes("large") || status.includes("fail") || status.includes("Timed");
 
-  // --- REUSABLE COMPONENTS (RESTORED) ---
+  // --- REUSABLE COMPONENTS ---
   
   const InfoTooltip = () => (
     <div className="relative group shrink-0">
@@ -248,7 +242,7 @@ function App() {
         <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 border border-gray-200 dark:border-gray-700 overflow-x-auto overflow-y-hidden">            
             
             {/* ROW 1 (Mobile) / LEFT (Desktop) */}
-            <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-3">
+            <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-3 flex-shrink-0">
                 <h1 className="text-xl font-extrabold flex items-center gap-2">
                     <MapIcon className="text-blue-500" size={24} /> Way<span className="text-blue-600 dark:text-blue-400">Finder</span>
                 </h1>
@@ -262,16 +256,10 @@ function App() {
             </div>
             
             {/* ROW 2 (Mobile) / CENTER (Desktop) */}
-            <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none ">
-                 <div className="hidden md:block"><CitySelector onSelect={handlePresetSelect} /></div>
-                 
+            <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none min-w-[200px]">
                  <div id="geocoder-container" className="flex-1 h-8 relative pt-0 min-w-0"></div>
                  <div className="hidden md:block"><InfoTooltip /></div>
-                 
-                 <div className="md:hidden shrink-0 flex items-center gap-2">
-                     <CitySelector onSelect={handlePresetSelect} />
-                     <LoadBtn />
-                 </div>
+                 <div className="md:hidden shrink-0"><LoadBtn /></div>
             </div>
 
             {/* ROW 3 (Mobile) / RIGHT (Desktop) */}
