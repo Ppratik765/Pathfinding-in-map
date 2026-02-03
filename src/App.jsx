@@ -234,19 +234,28 @@ const getWinStatus = (index) => {
     <div className="min-h-screen w-full flex flex-col items-center font-sans text-gray-800 dark:text-gray-100 relative pb-10 overflow-x-hidden">
       <Background darkMode={darkMode} />
       
-      <style>{`
+    <style>{`
         .maplibregl-ctrl-geocoder { 
             min-width: 0 !important; 
             width: 100% !important; 
             max-width: 100% !important;
             box-shadow: none !important;
             background: transparent !important;
+            z-index: 50 !important; /* Ensure the container is high */
         }
         .maplibregl-ctrl-geocoder--input {
             width: 100% !important;
             height: 32px !important;
             padding: 5px 30px !important;
             font-size: 12px !important;
+        }
+        /* FIX: Force dropdown to be on top of everything */
+        .maplibregl-ctrl-geocoder .suggestions {
+            z-index: 9999 !important;
+            top: 35px !important; /* Nudge it down slightly */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+            border-radius: 12px !important;
+            overflow: hidden !important;
         }
       `}</style>
 
