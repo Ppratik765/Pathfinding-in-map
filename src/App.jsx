@@ -175,20 +175,26 @@ const InfoTooltip = () => (
         <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
             <Info size={20} />
         </button>
-        {/* FIX: Changed absolute -> fixed. Centered on screen. Added max-h for small screens. */}
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85vw] max-w-[300px] max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-[0_0_50px_rgba(0,0,0,0.2)] rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[9999] text-xs leading-relaxed">
+        
+        {/* FIX: Changed 'top-1/2 -translate-y-1/2' to 'top-24'. 
+            This pushes the popup down to a safe distance from the top of the screen. */}
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[85vw] max-w-[300px] max-h-[70vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-[0_0_50px_rgba(0,0,0,0.3)] rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[9999] text-xs leading-relaxed">
             <h3 className="font-bold text-sm mb-3 border-b pb-2 border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <span>How to Use</span>
                 <span className="text-[10px] text-gray-400 font-normal">(Hover to read)</span>
             </h3>
             <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
-                <li><span className="font-bold text-blue-500">Zoom</span> to your desired level.</li>
+                <li><span className="font-bold text-blue-500">Zoom</span> to your desired level (11+).</li>
                 <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span>.</li>
                 <li>Select <span className="font-bold text-green-600">Start</span> tool & click road.</li>
                 <li>Select <span className="font-bold text-red-600">End</span> tool & click road.</li>
-                <li>(Optional) Add <span className="font-bold">Walls</span>/<span className="font-bold text-orange-500">Traffic</span>.</li>
-                <li>Click <span className="font-bold bg-green-100 dark:bg-green-900/30 px-1 rounded text-green-600 dark:text-green-400">RUN</span>!</li>
+                
+                {/* FIX: Added clear instructions for Block and Slow tools */}
+                <li>Select <span className="font-bold text-gray-500">Block</span> to create impassable walls.</li>
+                <li>Select <span className="font-bold text-orange-500">Slow</span> to add heavy traffic (High Cost).</li>
+                
+                <li>Click <span className="font-bold bg-green-100 dark:bg-green-900/30 px-1 rounded text-green-600 dark:text-green-400">RUN</span> to visualize!</li>
             </ol>
         </div>
     </div>
