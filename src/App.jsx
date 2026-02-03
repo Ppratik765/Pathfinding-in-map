@@ -182,19 +182,38 @@ const InfoTooltip = () => (
             <h3 className="font-bold text-sm mb-3 border-b pb-2 border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <span>How to Use</span>
             </h3>
-            <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
+{/* Core Instructions */}
+            <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300 mb-4">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
                 <li><span className="font-bold text-blue-500">Zoom</span> to your desired level (11+).</li>
                 <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span>.</li>
                 <li>Select <span className="font-bold text-green-600">Start</span> tool & click road.</li>
                 <li>Select <span className="font-bold text-red-600">End</span> tool & click road.</li>
-                
-                {/* FIX: Added clear instructions for Block and Slow tools */}
-                <li>Select <span className="font-bold text-gray-500">Block</span> to create impassable walls.</li>
-                <li>Select <span className="font-bold text-orange-500">Slow</span> to add heavy traffic (High Cost).</li>
-                
                 <li>Click <span className="font-bold bg-green-100 dark:bg-green-900/30 px-1 rounded text-green-600 dark:text-green-400">RUN</span> to visualize!</li>
             </ol>
+
+            {/* Visual Separator */}
+            <div className="flex items-center gap-2 mb-3 opacity-50">
+                <div className="h-px bg-gray-300 dark:bg-gray-600 flex-1"></div>
+                <span className="text-[10px] font-mono text-gray-400">OPTIONAL</span>
+                <div className="h-px bg-gray-300 dark:bg-gray-600 flex-1"></div>
+            </div>
+
+            {/* Optional Tools with Icons */}
+            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+                 <li className="flex items-center gap-2">
+                    <div className="p-1 bg-gray-100 dark:bg-gray-800 rounded">
+                        <BrickWall size={14} className="text-gray-500" />
+                    </div>
+                    <span>Use <b>Block</b> to make roads impassable.</span>
+                 </li>
+                 <li className="flex items-center gap-2">
+                    <div className="p-1 bg-orange-50 dark:bg-orange-900/20 rounded">
+                        <TrafficCone size={14} className="text-orange-500" />
+                    </div>
+                    <span>Use <b>Slow</b> to add heavy traffic (10x cost).</span>
+                 </li>
+            </ul>
         </div>
     </div>
   );
