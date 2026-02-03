@@ -134,16 +134,29 @@ function App() {
       if(mapRefs.current[index]) mapRefs.current[index].run();
   };
 
-  const getWinStatus = (index) => {
+const getWinStatus = (index) => {
       if (activeAlgos.length === 1 || finishedCount < activeAlgos.length) return null;
+      
       const myStats = results[index];
       if (!myStats) return null;
+
+      // FIX: Treat 0 cost (No Path) as Infinity so it can't win
+      const myCost = parseFloat(myStats.cost);
+      if (myCost === 0) return 'loser';
+
       let isWinner = true;
       for (const k of Object.keys(results)) {
           if (k === index.toString()) continue;
+          
           const other = results[k];
-          if (parseFloat(other.cost) < parseFloat(myStats.cost)) isWinner = false;
-          else if (parseFloat(other.cost) === parseFloat(myStats.cost) && parseFloat(other.time) < parseFloat(myStats.time)) isWinner = false;
+          const otherCost = parseFloat(other.cost);
+          
+          // If other has 0 cost (failed), I am still the winner
+          if (otherCost === 0) continue;
+
+          // Standard comparison: Low Cost > Low Time
+          if (otherCost < myCost) isWinner = false;
+          else if (otherCost === myCost && parseFloat(other.time) < parseFloat(myStats.time)) isWinner = false;
       }
       return isWinner ? 'winner' : 'loser';
   };
