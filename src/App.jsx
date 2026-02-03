@@ -175,7 +175,7 @@ const getWinStatus = (index) => {
         <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
             <Info size={20} />
         </button>
-        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[40vw] sm:w-[230px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
+        <div className="fixed top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[40vw] sm:w-[230px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
             <h3 className="font-bold text-sm mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
             <ol className="list-decimal pl-4 space-y-1.5 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
@@ -234,14 +234,13 @@ const getWinStatus = (index) => {
     <div className="min-h-screen w-full flex flex-col items-center font-sans text-gray-800 dark:text-gray-100 relative pb-10 overflow-x-hidden">
       <Background darkMode={darkMode} />
       
-    <style>{`
+      <style>{`
         .maplibregl-ctrl-geocoder { 
             min-width: 0 !important; 
             width: 100% !important; 
             max-width: 100% !important;
             box-shadow: none !important;
             background: transparent !important;
-            z-index: 50 !important; /* Ensure the container is high */
         }
         .maplibregl-ctrl-geocoder--input {
             width: 100% !important;
@@ -249,19 +248,11 @@ const getWinStatus = (index) => {
             padding: 5px 30px !important;
             font-size: 12px !important;
         }
-        /* FIX: Force dropdown to be on top of everything */
-        .maplibregl-ctrl-geocoder .suggestions {
-            z-index: 9999 !important;
-            top: 35px !important; /* Nudge it down slightly */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-            border-radius: 12px !important;
-            overflow: hidden !important;
-        }
       `}</style>
 
       {/* HEADER */}
       <div className="w-full max-w-7xl z-50 p-4 relative">
-        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 border border-gray-200 dark:border-gray-700 overflow-x-auto overflow-y-hidden">            
+        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 border border-gray-200 dark:border-gray-700 overflow-x-auto overflow-hidden">            
             
             {/* ROW 1 (Mobile) / LEFT (Desktop) */}
             <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-3 flex-shrink-0">
@@ -285,7 +276,7 @@ const getWinStatus = (index) => {
             </div>
 
             {/* ROW 3 (Mobile) / RIGHT (Desktop) */}
-            <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-3 order-3 md:order-none flex-shrink-0">
+            <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-3 order-3 md:order-none overflow-x-auto flex-shrink-0">
                 <ToolsGroup />
                 
                 <div className="hidden md:flex items-center gap-2">
