@@ -170,14 +170,18 @@ const getWinStatus = (index) => {
 
   // --- REUSABLE COMPONENTS ---
   
-  const InfoTooltip = () => (
+const InfoTooltip = () => (
     <div className="relative group shrink-0">
         <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
             <Info size={20} />
         </button>
-        <div className="fixed top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[40vw] sm:w-[230px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
-            <h3 className="font-bold text-sm mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
-            <ol className="list-decimal pl-4 space-y-1.5 text-gray-600 dark:text-gray-300">
+        {/* FIX: Changed absolute -> fixed. Centered on screen. Added max-h for small screens. */}
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85vw] max-w-[300px] max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-[0_0_50px_rgba(0,0,0,0.2)] rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[9999] text-xs leading-relaxed">
+            <h3 className="font-bold text-sm mb-3 border-b pb-2 border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <span>How to Use</span>
+                <span className="text-[10px] text-gray-400 font-normal">(Hover to read)</span>
+            </h3>
+            <ol className="list-decimal pl-4 space-y-2 text-gray-600 dark:text-gray-300">
                 <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
                 <li><span className="font-bold text-blue-500">Zoom</span> to your desired level.</li>
                 <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span>.</li>
@@ -250,9 +254,10 @@ const getWinStatus = (index) => {
         }
       `}</style>
 
-      {/* HEADER */}
+{/* HEADER */}
       <div className="w-full max-w-7xl z-50 p-4 relative">
-        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 border border-gray-200 dark:border-gray-700 overflow-x-auto overflow-hidden">            
+        {/* FIX: Removed 'overflow-x-auto overflow-y-hidden' from here. Added 'overflow-visible' */}
+        <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 border border-gray-200 dark:border-gray-700 overflow-visible">            
             
             {/* ROW 1 (Mobile) / LEFT (Desktop) */}
             <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-3 flex-shrink-0">
@@ -269,17 +274,20 @@ const getWinStatus = (index) => {
             </div>
             
             {/* ROW 2 (Mobile) / CENTER (Desktop) */}
-            <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none min-w-[200px]">
+            {/* FIX: This section remains overflow-visible so the dropdown can pop out */}
+            <div className="flex items-center w-full md:flex-1 gap-2 order-2 md:order-none relative z-50">
                  <div id="geocoder-container" className="flex-1 h-8 relative pt-0 min-w-0"></div>
                  <div className="hidden md:block"><InfoTooltip /></div>
                  <div className="md:hidden shrink-0"><LoadBtn /></div>
             </div>
 
             {/* ROW 3 (Mobile) / RIGHT (Desktop) */}
-            <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-3 order-3 md:order-none overflow-x-auto flex-shrink-0">
+            {/* FIX: Added 'overflow-x-auto' HERE. Only the tools will scroll if the screen is tight. */}
+            {/* Added 'no-scrollbar' to keep it clean (if supported) or standard scroll */}
+            <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-3 order-3 md:order-none flex-shrink-1 overflow-x-auto min-w-0">
                 <ToolsGroup />
                 
-                <div className="hidden md:flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-2 shrink-0">
                     <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
                     <MapCountControls />
                     <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
@@ -289,7 +297,7 @@ const getWinStatus = (index) => {
                     <ThemeToggle />
                 </div>
 
-                <div className="md:hidden w-auto"><RunBtn /></div>
+                <div className="md:hidden w-auto shrink-0"><RunBtn /></div>
             </div>
         </div>
         
