@@ -247,7 +247,7 @@ const InfoTooltip = () => (
         {[
             { id: 'start', icon: MousePointer2, label: 'Start', col: 'text-green-600' },
             { id: 'end', icon: MousePointer2, label: 'End', col: 'text-red-600' },
-            { id: 'wall', icon: BrickWall, label: 'Block', col: 'text-gray-600 dark:text-red-300' },
+            { id: 'wall', icon: BrickWall, label: 'Block', col: 'text-red-600 dark:text-red-300' },
             { id: 'traffic', icon: TrafficCone, label: 'Slow', col: 'text-orange-500' }
         ].map(t => (
             <button key={t.id} onClick={() => setTool(t.id)} className={clsx("flex items-center gap-1 px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-1 md:flex-none justify-center", tool === t.id ? `bg-white dark:bg-gray-600 shadow-md ${t.col} scale-105` : "opacity-60 hover:opacity-100")}>
