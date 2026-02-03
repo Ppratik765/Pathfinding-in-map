@@ -231,7 +231,7 @@ export const MapBoard = forwardRef(({
           };
           if(map.current.getSource('area-boundary')) map.current.getSource('area-boundary').setData(polygon);
 
-          if(onStatus) onStatus(`Graph ready for roads inside green perimeter, ${geojson.features.length} segments`);
+          if(onStatus) onStatus(`Graph ready for roads inside perimeter, ${geojson.features.length} segments`);
       } else {
           if(onStatus) onStatus("Map to too large to load in. Zoom in closer!");
       }
