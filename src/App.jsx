@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { MapBoard } from './components/MapBoard';
 import { Background } from './components/Background';
-import { CitySelector } from './components/CitySelector'; // Assuming you added this
+import { CitySelector } from './components/CitySelector'; 
 import { buildGraphFromGeoJSON } from './utils/graphUtils';
-import { decodeStateFromUrl, updateUrl } from './utils/urlUtils'; // Import URL utils
+import { decodeStateFromUrl, updateUrl } from './utils/urlUtils';
 import { Play, RefreshCw, Moon, Sun, Map as MapIcon, BrickWall, MousePointer2, Plus, Minus, TrafficCone, RotateCcw, Info, CheckSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -14,7 +14,7 @@ function App() {
   const [showPerimeter, setShowPerimeter] = useState(true); 
 
   // --- 1. INITIALIZE FROM URL ---
-  const urlState = useRef(decodeStateFromUrl()).current; // Read once on mount
+  const urlState = useRef(decodeStateFromUrl()).current; 
 
   const [activeAlgos, setActiveAlgos] = useState(urlState.activeAlgos || ['dijkstra']); 
 
@@ -35,7 +35,6 @@ function App() {
   const [results, setResults] = useState({});
   const [finishedCount, setFinishedCount] = useState(0); 
   
-  // Refs for auto-run logic
   const mapRefs = useRef([]);
   const autoRunRef = useRef({
       needsLoad: urlState.shouldAutoRun,
@@ -64,11 +63,8 @@ function App() {
   }, [viewState, activeAlgos, sharedData.start, sharedData.end]);
 
   // --- 3. AUTO-PILOT LOGIC ---
-  
-  // A. Auto-Load Roads (Wait for map to be ready)
   useEffect(() => {
       if (autoRunRef.current.needsLoad && !autoRunRef.current.attemptedLoad) {
-          // Give MapLibre 1.5s to initialize and settle camera
           const timer = setTimeout(() => {
               if (mapRefs.current[0]) {
                   console.log("🚀 Auto-Pilot: Loading Roads...");
@@ -82,17 +78,13 @@ function App() {
       }
   }, []);
 
-  // B. Auto-Run Algorithms (Wait for graph to build)
   useEffect(() => {
       if (autoRunRef.current.needsRun && sharedData.graph) {
-          // Graph is ready, Start & End are set, Run it!
           console.log("🚀 Auto-Pilot: Running Algorithms...");
           setStatus("Auto-Pilot: Running Algorithms...");
-          
-          // Small delay to ensure visual updates
           setTimeout(() => {
               handleRun();
-              autoRunRef.current.needsRun = false; // Disable auto-run so it doesn't loop
+              autoRunRef.current.needsRun = false; 
           }, 500);
       }
   }, [sharedData.graph]);
@@ -112,7 +104,6 @@ function App() {
   };
   const handleLoadRoads = () => { if(mapRefs.current[0]) mapRefs.current[0].loadRoads(); };
   
-  // Preset Handler
   const handlePresetSelect = (city) => {
       setViewState({ center: [city.lng, city.lat], zoom: city.zoom, pitch: 60, bearing: 0 });
       setStatus(`Warping to ${city.name}... Click Load!`);
@@ -137,7 +128,6 @@ function App() {
       setFinishedCount(0);
       mapRefs.current.forEach(ref => ref && ref.reset());
       setStatus("Reset. Load roads again."); 
-      // Clear auto-run flags on manual reset
       autoRunRef.current = { needsLoad: false, needsRun: false, attemptedLoad: false };
   };
 
@@ -170,6 +160,68 @@ function App() {
   const getAvailableAlgorithms = (currentValue) => { const used = new Set(activeAlgos); return allAlgorithms.filter(a => !used.has(a.value) || a.value === currentValue); };
 
   const isError = status.includes("Error") || status.includes("Zoom") || status.includes("large") || status.includes("fail") || status.includes("Timed");
+
+  // --- REUSABLE COMPONENTS (RESTORED) ---
+  
+  const InfoTooltip = () => (
+    <div className="relative group shrink-0">
+        <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400">
+            <Info size={20} />
+        </button>
+        <div className="absolute top-10 left-0 md:left-1/2 md:-translate-x-1/2 w-[40vw] sm:w-[230px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-[100] text-xs leading-relaxed">
+            <h3 className="font-bold text-sm mb-2 border-b pb-1 border-gray-200 dark:border-gray-700">How to Use</h3>
+            <ol className="list-decimal pl-4 space-y-1.5 text-gray-600 dark:text-gray-300">
+                <li><span className="font-bold text-blue-500">Search</span> or drag to a city.</li>
+                <li><span className="font-bold text-blue-500">Zoom</span> to your desired level.</li>
+                <li>Click <span className="font-bold bg-indigo-100 dark:bg-indigo-900/30 px-1 rounded text-indigo-600 dark:text-indigo-400">LOAD</span>.</li>
+                <li>Select <span className="font-bold text-green-600">Start</span> tool & click road.</li>
+                <li>Select <span className="font-bold text-red-600">End</span> tool & click road.</li>
+                <li>(Optional) Add <span className="font-bold">Walls</span>/<span className="font-bold text-orange-500">Traffic</span>.</li>
+                <li>Click <span className="font-bold bg-green-100 dark:bg-green-900/30 px-1 rounded text-green-600 dark:text-green-400">RUN</span>!</li>
+            </ol>
+        </div>
+    </div>
+  );
+
+  const MapCountControls = () => (
+    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+        <button onClick={removeMap} disabled={activeAlgos.length <= 1} className="p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded-lg disabled:opacity-30"><Minus size={16}/></button>
+        <span className="text-sm font-bold w-4 text-center">{activeAlgos.length}</span>
+        <button onClick={addMap} disabled={activeAlgos.length >= 4} className="p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded-lg disabled:opacity-30"><Plus size={16}/></button>
+    </div>
+  );
+
+  const ThemeToggle = () => (
+    <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-gray-800 rounded-xl transition-colors">{darkMode ? <Sun size={18}/> : <Moon size={18}/>}</button>
+  );
+
+  const ResetBtn = () => (
+    <button onClick={handleReset} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"><RefreshCw size={18}/></button>
+  );
+
+  const LoadBtn = () => (
+    <button onClick={handleLoadRoads} className="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[10px] sm:text-xs shadow-lg hover:-translate-y-0.5 transition-all w-auto whitespace-nowrap"><MapIcon size={14} /> LOAD</button>
+  );
+
+  const RunBtn = () => (
+    <button onClick={handleRun} className="flex items-center justify-center gap-2 px-3 md:px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs shadow-lg hover:-translate-y-0.5 transition-all w-full md:w-auto whitespace-nowrap"><Play size={14} /> RUN</button>
+  );
+
+  const ToolsGroup = () => (
+    <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl flex-1 md:flex-none justify-center md:justify-start">
+        {[
+            { id: 'start', icon: MousePointer2, label: 'Start', col: 'text-green-600' },
+            { id: 'end', icon: MousePointer2, label: 'End', col: 'text-red-600' },
+            { id: 'wall', icon: BrickWall, label: 'Block', col: 'text-gray-600 dark:text-gray-300' },
+            { id: 'traffic', icon: TrafficCone, label: 'Slow', col: 'text-orange-500' }
+        ].map(t => (
+            <button key={t.id} onClick={() => setTool(t.id)} className={clsx("flex items-center gap-1 px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-1 md:flex-none justify-center", tool === t.id ? `bg-white dark:bg-gray-600 shadow-md ${t.col} scale-105` : "opacity-60 hover:opacity-100")}>
+                <t.icon size={14} /> <span className="hidden sm:inline">{t.label}</span>
+                <span className="sm:hidden">{t.label.charAt(0)}</span>
+            </button>
+        ))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center font-sans text-gray-800 dark:text-gray-100 relative pb-10 overflow-x-hidden">
