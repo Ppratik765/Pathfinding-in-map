@@ -5,6 +5,7 @@ import { buildGraphFromGeoJSON } from './utils/graphUtils';
 import { decodeStateFromUrl, updateUrl } from './utils/urlUtils';
 import { Play, RefreshCw, Moon, Sun, Map as MapIcon, BrickWall, MousePointer2, Plus, Minus, TrafficCone, RotateCcw, Info, CheckSquare } from 'lucide-react';
 import { clsx } from 'clsx';
+import { Analytics } from '@vercel/analytics/react';
 
 function App() {
   const [darkMode, setDarkMode] = useState(true);
@@ -401,6 +402,7 @@ const InfoTooltip = () => (
             );
         })}
       </div>
+      <Analytics />
     </div>
   );
 }

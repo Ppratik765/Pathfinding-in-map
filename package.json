@@ -13,6 +13,7 @@
     "@maptiler/geocoding-control": "^2.1.7",
     "@turf/distance": "^7.3.2",
     "@turf/helpers": "^7.3.2",
+    "@vercel/analytics": "^1.6.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.562.0",
     "maplibre-gl": "^5.16.0",
