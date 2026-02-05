@@ -8,13 +8,15 @@ It allows users to render city blocks in 3D, simulate traffic conditions, place 
 [https://pathfinding-lab.vercel.app/
 ](https://wayfinder-algorithms.vercel.app/)
 
-## Project Screenshots
+## Project Preview
+
+https://github.com/user-attachments/assets/5c5e81ba-224d-4aa6-999e-72cab132b33d
 
 ## Overview
 
-Pathfinding algorithms are fundamental to computer science, used in everything from GPS navigation to network routing. This application provides a grid-based interactive environment where users can draw obstacles, set terrain weights (like mud or water), and visualise how different algorithms traverse the graph to find the shortest path between a Start node and a Target node.
+Pathfinding algorithms are fundamental to computer science, used in everything from GPS navigation to network routing. This application provides a map-based interactive environment where users can draw obstacles, set terrain weights (like traffic or roadblocks), and visualise how different algorithms traverse the graph to find the shortest path between a Start node and a Target node.
 
-The application focuses on performance and clarity, featuring a comparison mode that allows algorithms to be raced side-by-side and a 3D tilt view for enhanced visualisation.
+The application focuses on performance and clarity, featuring a comparison mode that allows algorithms to be raced side-by-side for enhanced visualisation.
 
 ## Features
 
