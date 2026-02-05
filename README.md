@@ -1,16 +1,14 @@
-# GeoViz: Real-World Pathfinding Visualizer
+# WayFinder: Pathfinding Visualizer
 
-GeoViz is an advanced, interactive geospatial analysis tool that visualises pathfinding algorithms on real-world map data. Unlike traditional grid-based visualizers, GeoViz operates on actual street networks fetched dynamically from OpenStreetMap (OSM).
+Wayfinder is an advanced, interactive geospatial analysis tool that visualises pathfinding algorithms on real-world map data. Unlike traditional grid-based visualizers, Wayfinder operates on actual street networks fetched dynamically from OpenStreetMap (OSM).
 
 It allows users to render city blocks in 3D, simulate traffic conditions, place roadblocks, and compare the performance of multiple pathfinding algorithms simultaneously in a synchronised multi-viewport environment.
 
 ## Live Demo
-https://pathfinding-lab.vercel.app/
+[https://pathfinding-lab.vercel.app/
+](https://wayfinder-algorithms.vercel.app/)
 
 ## Project Screenshots
-<img width="1904" height="943" alt="image" src="https://github.com/user-attachments/assets/980eefe7-b65e-4f66-9471-5068b31f9b63" />
-<img width="1877" height="731" alt="image" src="https://github.com/user-attachments/assets/14c33307-c25b-4bfb-863a-99c226f6db0d" />
-<img width="1890" height="819" alt="image" src="https://github.com/user-attachments/assets/4ee9a997-0c06-4f4a-bd49-393c31891c3a" />
 
 ## Overview
 
