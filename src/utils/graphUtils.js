@@ -2,12 +2,6 @@ import osmtogeojson from 'osmtogeojson';
 import distance from '@turf/distance';
 import { point } from '@turf/helpers';
 
-// Pointing to your new Vercel Rewrites instead of the external URLs
-const SERVERS = [
-    "/api/overpass",
-    "/api/overpass-lz4"
-];
-
 export const fetchRoadNetwork = async (bounds, zoom) => {
   // --- 1. INSTANT PRE-CHECKS ---
   if (zoom < 12) {
@@ -32,7 +26,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   // --- 2. DYNAMIC QUERY ---
   let roadFilter = "";
   if (zoom < 15) {
-      console.log("Fast Mode: Major roads + Links (Relaxed Connectivity)");
+      console.log("Fast Mode: Major roads + Links");
       roadFilter = `["highway"~"^(motorway|trunk|primary|secondary|tertiary|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"]`;
   } else {
       console.log("Detail Mode: All streets");
@@ -50,37 +44,35 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
     out skel qt;
   `;
 
-  // --- 3. ROBUST FETCH (VIA VERCEL PROXY) ---
-  for (const server of SERVERS) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); 
+  // --- 3. ROBUST FETCH (VIA YOUR BACKEND API) ---
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
-      try {
-          // FIX: Since we are using a proxy, CORS is no longer an issue!
-          // We can put the correct 'Content-Type' and 'data=' formatting back so Overpass accepts it (Fixes 406 Error).
-          const response = await fetch(server, { 
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: `data=${encodeURIComponent(query)}`,
-              signal: controller.signal 
-          });
-          
-          clearTimeout(timeoutId);
+  try {
+      // Send a clean JSON request to YOUR backend server
+      const response = await fetch('/api/overpass', { 
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ query }),
+          signal: controller.signal 
+      });
+      
+      clearTimeout(timeoutId);
 
-          if (response.ok) {
-              const data = await response.json();
-              return osmtogeojson(data);
-          } else {
-              console.warn(`Vercel proxy ${server} returned status ${response.status}`);
-          }
-      } catch (error) {
-          console.warn(`Proxy ${server} failed, trying next...`);
+      if (response.ok) {
+          const data = await response.json();
+          // Convert the raw OSM data into GeoJSON format for the map
+          return osmtogeojson(data);
+      } else {
+          console.error(`Backend returned status ${response.status}`);
+          return { error: "Server responded with an error. Please try again." };
       }
+  } catch (error) {
+      console.error("Fetch failed:", error);
+      return { error: "Failed to connect to the routing server. Please try again later." };
   }
-
-  return { error: "Servers are busy or blocking requests. Please try again later." };
 };
 
 export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
@@ -92,6 +84,7 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
       const coords = feature.geometry.coordinates;
       const props = feature.properties || {};
       
+      // Strict Realism: Respect one-way tags
       const isOneWay = props.oneway === 'yes' || props.junction === 'roundabout';
 
       for (let i = 0; i < coords.length - 1; i++) {
@@ -106,14 +99,19 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
         if (obstacles[toId] === 'block' || obstacles[fromId] === 'block') weight = Infinity;
         else if (obstacles[toId] === 'traffic' || obstacles[fromId] === 'traffic') weight *= 10;
 
+        // Initialize node structure with BOTH neighbors (Forward) and reverseNeighbors (Backward)
         if (!nodes[fromId]) nodes[fromId] = { id: fromId, lng: from[0], lat: from[1], neighbors: [], reverseNeighbors: [] };
         if (!nodes[toId]) nodes[toId] = { id: toId, lng: to[0], lat: to[1], neighbors: [], reverseNeighbors: [] };
 
+        // 1. Forward Connection (A -> B)
         nodes[fromId].neighbors.push({ node: toId, weight });
+        // This edge "comes from" A, so B sees A as a reverse neighbor
         nodes[toId].reverseNeighbors.push({ node: fromId, weight });
 
+        // 2. Backward Connection (B -> A) -- Only if NOT One-Way
         if (!isOneWay) {
             nodes[toId].neighbors.push({ node: fromId, weight });
+            // This edge "comes from" B, so A sees B as a reverse neighbor
             nodes[fromId].reverseNeighbors.push({ node: toId, weight });
         }
       }
