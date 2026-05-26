@@ -85,7 +85,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   }
 
   return { error: "Servers are busy or blocking requests. Please try again later." };
-
+};
 export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
   const nodes = {};
   if (!geojson || !geojson.features) return nodes;
