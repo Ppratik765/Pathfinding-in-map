@@ -2,13 +2,14 @@ import osmtogeojson from 'osmtogeojson';
 import distance from '@turf/distance';
 import { point } from '@turf/helpers';
 
+// Pointing to your new Vercel Rewrites instead of the external URLs
 const SERVERS = [
     "/api/overpass",
     "/api/overpass-lz4"
 ];
 
 export const fetchRoadNetwork = async (bounds, zoom) => {
-  // --- 1. INSTANT PRE-CHECKS (No waiting) ---
+  // --- 1. INSTANT PRE-CHECKS ---
   if (zoom < 12) {
       return { error: "Map is too large. Zoom in closer and load again." };
   }
@@ -17,8 +18,6 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   const height = Math.abs(bounds.north - bounds.south);
   const area = width * height;
 
-  // Desktop (>768px): 0.33 (Large area)
-  // Mobile (<768px): 0.15 (Restricted area to prevent crashes)
   const isMobile = window.innerWidth < 768;
   const maxArea = isMobile ? 0.15 : 0.33;
 
@@ -33,11 +32,9 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
   // --- 2. DYNAMIC QUERY ---
   let roadFilter = "";
   if (zoom < 15) {
-      // Fast Mode: Major roads only
       console.log("Fast Mode: Major roads + Links (Relaxed Connectivity)");
       roadFilter = `["highway"~"^(motorway|trunk|primary|secondary|tertiary|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"]`;
   } else {
-      // Detail Mode: Everything playable
       console.log("Detail Mode: All streets");
       roadFilter = `["highway"]["highway"!~"footway|cycleway|path|service|track|steps|pedestrian|construction"]`;
   }
@@ -59,10 +56,14 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
       const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
       try {
-          // We are still using POST, but now we are sending it to our own domain!
+          // FIX: Since we are using a proxy, CORS is no longer an issue!
+          // We can put the correct 'Content-Type' and 'data=' formatting back so Overpass accepts it (Fixes 406 Error).
           const response = await fetch(server, { 
               method: 'POST',
-              body: query,
+              headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              body: `data=${encodeURIComponent(query)}`,
               signal: controller.signal 
           });
           
@@ -81,6 +82,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
 
   return { error: "Servers are busy or blocking requests. Please try again later." };
 };
+
 export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
   const nodes = {};
   if (!geojson || !geojson.features) return nodes;
@@ -90,7 +92,6 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
       const coords = feature.geometry.coordinates;
       const props = feature.properties || {};
       
-      // Strict Realism: Respect one-way tags
       const isOneWay = props.oneway === 'yes' || props.junction === 'roundabout';
 
       for (let i = 0; i < coords.length - 1; i++) {
@@ -105,19 +106,14 @@ export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
         if (obstacles[toId] === 'block' || obstacles[fromId] === 'block') weight = Infinity;
         else if (obstacles[toId] === 'traffic' || obstacles[fromId] === 'traffic') weight *= 10;
 
-        // Initialize node structure with BOTH neighbors (Forward) and reverseNeighbors (Backward)
         if (!nodes[fromId]) nodes[fromId] = { id: fromId, lng: from[0], lat: from[1], neighbors: [], reverseNeighbors: [] };
         if (!nodes[toId]) nodes[toId] = { id: toId, lng: to[0], lat: to[1], neighbors: [], reverseNeighbors: [] };
 
-        // 1. Forward Connection (A -> B)
         nodes[fromId].neighbors.push({ node: toId, weight });
-        // This edge "comes from" A, so B sees A as a reverse neighbor
         nodes[toId].reverseNeighbors.push({ node: fromId, weight });
 
-        // 2. Backward Connection (B -> A) -- Only if NOT One-Way
         if (!isOneWay) {
             nodes[toId].neighbors.push({ node: fromId, weight });
-            // This edge "comes from" B, so A sees B as a reverse neighbor
             nodes[fromId].reverseNeighbors.push({ node: toId, weight });
         }
       }
