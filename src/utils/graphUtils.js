@@ -62,14 +62,11 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Max per server
 
       try {
-          // FIX: Changed from GET to POST. 
-          // This prevents URL length limits and avoids most CORS firewall blocks.
+          // FIX: Removing headers and sending raw text makes this a "Simple Request".
+          // This skips the browser's CORS Preflight (OPTIONS) check which is currently failing on Overpass.
           const response = await fetch(server, { 
               method: 'POST',
-              headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: `data=${encodeURIComponent(query)}`,
+              body: query, // Send raw query directly, NO 'data=' prefix, NO encodeURIComponent
               signal: controller.signal 
           });
           
@@ -78,6 +75,8 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
           if (response.ok) {
               const data = await response.json();
               return osmtogeojson(data);
+          } else {
+              console.warn(`Server ${server} returned status ${response.status}`);
           }
       } catch (error) {
           // Silent fail, try next server in the rotation
@@ -85,8 +84,7 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
       }
   }
 
-  return { error: "Servers are busy, unable to load roads networks. Try after some time." };
-};
+  return { error: "Servers are busy or blocking requests. Please try again later." };
 
 export const buildGraphFromGeoJSON = (geojson, obstacles = {}) => {
   const nodes = {};
