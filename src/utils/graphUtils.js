@@ -2,12 +2,9 @@ import osmtogeojson from 'osmtogeojson';
 import distance from '@turf/distance';
 import { point } from '@turf/helpers';
 
-// Server rotation - Updated with reliable, active servers
 const SERVERS = [
-    "https://overpass-api.de/api/interpreter",
-    "https://lz4.overpass-api.de/api/interpreter",
-    "https://z.overpass-api.de/api/interpreter",
-    "https://overpass.openstreetmap.ru/api/interpreter"
+    "/api/overpass",
+    "/api/overpass-lz4"
 ];
 
 export const fetchRoadNetwork = async (bounds, zoom) => {
@@ -56,17 +53,16 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
     out skel qt;
   `;
 
-  // --- 3. ROBUST FETCH ---
+  // --- 3. ROBUST FETCH (VIA VERCEL PROXY) ---
   for (const server of SERVERS) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Max per server
+      const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
       try {
-          // FIX: Removing headers and sending raw text makes this a "Simple Request".
-          // This skips the browser's CORS Preflight (OPTIONS) check which is currently failing on Overpass.
+          // We are still using POST, but now we are sending it to our own domain!
           const response = await fetch(server, { 
               method: 'POST',
-              body: query, // Send raw query directly, NO 'data=' prefix, NO encodeURIComponent
+              body: query,
               signal: controller.signal 
           });
           
@@ -76,11 +72,10 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
               const data = await response.json();
               return osmtogeojson(data);
           } else {
-              console.warn(`Server ${server} returned status ${response.status}`);
+              console.warn(`Vercel proxy ${server} returned status ${response.status}`);
           }
       } catch (error) {
-          // Silent fail, try next server in the rotation
-          console.warn(`Server ${server} failed, trying next...`);
+          console.warn(`Proxy ${server} failed, trying next...`);
       }
   }
 
