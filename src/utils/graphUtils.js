@@ -2,11 +2,12 @@ import osmtogeojson from 'osmtogeojson';
 import distance from '@turf/distance';
 import { point } from '@turf/helpers';
 
-// Server rotation
+// Server rotation - Updated with reliable, active servers
 const SERVERS = [
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+    "https://lz4.overpass-api.de/api/interpreter",
+    "https://z.overpass-api.de/api/interpreter",
+    "https://overpass.openstreetmap.ru/api/interpreter"
 ];
 
 export const fetchRoadNetwork = async (bounds, zoom) => {
@@ -57,12 +58,21 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
 
   // --- 3. ROBUST FETCH ---
   for (const server of SERVERS) {
-      const url = `${server}?data=${encodeURIComponent(query)}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Max per server
 
       try {
-          const response = await fetch(url, { signal: controller.signal });
+          // FIX: Changed from GET to POST. 
+          // This prevents URL length limits and avoids most CORS firewall blocks.
+          const response = await fetch(server, { 
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              body: `data=${encodeURIComponent(query)}`,
+              signal: controller.signal 
+          });
+          
           clearTimeout(timeoutId);
 
           if (response.ok) {
@@ -70,7 +80,8 @@ export const fetchRoadNetwork = async (bounds, zoom) => {
               return osmtogeojson(data);
           }
       } catch (error) {
-          // Silent fail, try next server
+          // Silent fail, try next server in the rotation
+          console.warn(`Server ${server} failed, trying next...`);
       }
   }
 
